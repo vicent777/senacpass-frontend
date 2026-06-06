@@ -14,9 +14,11 @@ import {
   Dropdown,
 } from './styles';
 import avatar from '../../../assets/avatar.svg';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export function Header() {
-  const [open, setOpen] = useState(false);
+  const [ open, setOpen ] = useState(false);
+  const { user, logout } = useAuth();
   const isOnline = true; // depois pode vir do backend
 
   return (
@@ -33,10 +35,10 @@ export function Header() {
         </ActionButton>
 
         <User type="button" onClick={() => setOpen(!open)} aria-expanded={open}>
-          <UserAvatar src={avatar} alt="Arnott R. Caiado" />
+          <UserAvatar src={avatar} alt={user?.name || 'Usuário'} />
 
           <UserMeta>
-            <UserName>Arnott R. Caiado</UserName>
+            <UserName>{user?.name || 'Arnott R. Caiado'}</UserName>
             <UserRole>Faculdade Senac Pernambuco</UserRole>
           </UserMeta>
 
@@ -48,7 +50,7 @@ export function Header() {
               <div>Preferências</div>
               <div>Notificações</div>
               <hr />
-              <div>Sair</div>
+              <div onClick={logout}>Sair</div>
             </Dropdown>
           )}
         </User>

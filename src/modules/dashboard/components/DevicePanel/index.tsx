@@ -1,4 +1,5 @@
 import type { DeviceActionData, DevicePanelData } from '../../types';
+import { EmptyState } from '../../../../components/ui/EmptyState';
 import { DeviceAction, DeviceActions, DeviceDescription, DeviceHeader, DeviceIcon, DeviceTitle, Divider, Panel } from './styles';
 import { Cpu, RefreshCcw, Shuffle, LockKeyhole, Unlock } from 'lucide-react';
 
@@ -23,25 +24,32 @@ export function DevicePanel({ data, onAction }: Props) {
 
       <Divider />
 
-      <DeviceActions>
-        {data.actions.map(({ label, icon, danger }) => {
-          const Icon =
-            icon === 'refresh'
-              ? RefreshCcw
-              : icon === 'sync'
-              ? Shuffle
-              : icon === 'lock'
-              ? LockKeyhole
-              : Unlock;
+      {data.actions.length === 0 ? (
+        <EmptyState
+          title="Nenhum dispositivo vinculado"
+          description="Assim que houver dispositivos cadastrados, as ações de manutenção aparecem aqui."
+        />
+      ) : (
+        <DeviceActions>
+          {data.actions.map(({ label, icon, danger }) => {
+            const Icon =
+              icon === 'refresh'
+                ? RefreshCcw
+                : icon === 'sync'
+                ? Shuffle
+                : icon === 'lock'
+                ? LockKeyhole
+                : Unlock;
 
-          return (
-            <DeviceAction key={label} type="button" danger={danger} onClick={() => onAction?.({ label, icon, danger })}>
-              <Icon size={18} />
-              <span>{label}</span>
-            </DeviceAction>
-          );
-        })}
-      </DeviceActions>
+            return (
+              <DeviceAction key={label} type="button" danger={danger} onClick={() => onAction?.({ label, icon, danger })}>
+                <Icon size={18} />
+                <span>{label}</span>
+              </DeviceAction>
+            );
+          })}
+        </DeviceActions>
+      )}
     </Panel>
   );
 }

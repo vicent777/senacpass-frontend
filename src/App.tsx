@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { AppRoutes } from './routes/index';
+import { AuthProvider } from './contexts/AuthContext';
 
 const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -21,7 +22,11 @@ function App() {
     document.title = `SenacPass | ${moduleTitle}`;
   }, [pathname]);
 
-  return <AppRoutes />;
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  );
 }
 
 export default App;

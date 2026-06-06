@@ -1,4 +1,8 @@
-import { BellRing, LockKeyhole, MonitorCog, ShieldCheck, SlidersHorizontal, UserCog } from 'lucide-react';
+import { BellRing, ShieldCheck, SlidersHorizontal, UserCog } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import type { Professor } from '../../services/resources';
+import { publicApi } from '../../services/resources';
 import {
   Page,
   Header,
@@ -24,40 +28,36 @@ import {
   PrimaryButton,
 } from './styles';
 
-const settingsBlocks = [
-  {
-    title: 'Notificações de frequência',
-    description: 'Receba alertas de ausência, atraso e tentativas suspeitas.',
-    status: 'Ativo',
-    icon: BellRing,
-  },
-  {
-    title: 'Sincronização automática',
-    description: 'Atualiza sensores e listas sempre que houver mudança de sala.',
-    status: 'Ativo',
-    icon: SlidersHorizontal,
-  },
-  {
-    title: 'Bloqueio de check-in',
-    description: 'Trava entrada manual após o encerramento da aula.',
-    status: 'Protegido',
-    icon: LockKeyhole,
-  },
-  {
-    title: 'Perfis e permissões',
-    description: 'Controle de quem pode corrigir presença e gerar relatórios.',
-    status: 'Gestão',
-    icon: UserCog,
-  },
-];
-
-const stats = [
-  { label: 'Regras ativas', value: '7', note: 'Aplicadas ao fluxo do professor', icon: ShieldCheck },
-  { label: 'Dispositivos monitorados', value: '6', note: 'Todos vinculados a salas com turmas', icon: MonitorCog },
-  { label: 'Alertas configurados', value: '4', note: 'Frequência, IoT, aula e relatórios', icon: BellRing },
-];
-
 export function Configuracoes() {
+  const [professors, setProfessors] = useState<Professor[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProfessors() {
+      const response = await publicApi.listProfessores().catch(() => []);
+
+      if (isMounted) {
+        setProfessors(response);
+      }
+    }
+
+    void loadProfessors();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const stats = useMemo(
+    () => [
+      { label: 'Professores cadastrados', value: String(professors.length), note: professors.length > 0 ? 'Lista retornada pela API' : 'Não há dados no momento', icon: ShieldCheck },
+      { label: 'Permissões ativas', value: professors.length > 0 ? String(professors.length) : '0', note: 'Baseada nos professores cadastrados', icon: UserCog },
+      { label: 'Alertas configurados', value: '0', note: 'Sem dados no momento', icon: BellRing },
+    ],
+    [professors],
+  );
+
   return (
     <Page>
       <Header>
@@ -65,8 +65,7 @@ export function Configuracoes() {
           <Eyebrow>Preferências do sistema</Eyebrow>
           <Title>Configurações</Title>
           <Subtitle>
-            Ajustes do ambiente do professor, com foco em notificações, permissões,
-            sincronização e proteção do fluxo de presença.
+            Ajustes do ambiente do professor com base no cadastro retornado pela API.
           </Subtitle>
         </div>
 
@@ -95,35 +94,38 @@ export function Configuracoes() {
 
       <Section>
         <SectionHeader>
-          <SectionTitle>Blocos principais</SectionTitle>
+          <SectionTitle>Professores cadastrados</SectionTitle>
           <SectionBadge>
             <SlidersHorizontal size={16} />
-            Ajustes rápidos
+            Contrato real da API
           </SectionBadge>
         </SectionHeader>
 
-        <ToggleList>
-          {settingsBlocks.map((setting) => {
-            const Icon = setting.icon;
-
-            return (
-              <ToggleItem key={setting.title}>
+        {professors.length === 0 ? (
+          <EmptyState
+            title="Não há professores cadastrados"
+            description="Quando a API retornar professores, eles aparecerão aqui."
+          />
+        ) : (
+          <ToggleList>
+            {professors.map((professor) => (
+              <ToggleItem key={professor.id_professor}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <div style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(30,107,214,0.1)', color: '#1E6BD6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon size={18} />
+                    <UserCog size={18} />
                   </div>
 
                   <div style={{ minWidth: 0 }}>
-                    <ToggleTitle>{setting.title}</ToggleTitle>
-                    <ToggleText>{setting.description}</ToggleText>
+                    <ToggleTitle>{professor.nome}</ToggleTitle>
+                    <ToggleText>{professor.email}</ToggleText>
                   </div>
                 </div>
 
-                <TogglePill>{setting.status}</TogglePill>
+                <TogglePill>{professor.id_professor}</TogglePill>
               </ToggleItem>
-            );
-          })}
-        </ToggleList>
+            ))}
+          </ToggleList>
+        )}
       </Section>
 
       <Section>

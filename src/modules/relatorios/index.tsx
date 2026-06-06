@@ -1,4 +1,7 @@
 import { Download, FileSpreadsheet, FileText, LineChart, Printer } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { publicApi, protectedApi } from '../../services/resources';
 import {
   Page,
   Header,
@@ -21,59 +24,105 @@ import {
   Status,
 } from './styles';
 
-const reportRows = [
-  {
-    name: 'Frequência por turma',
-    type: 'Excel / CSV',
-    range: 'Últimos 30 dias',
-    owner: 'Professor Arnott',
-    status: 'Disponível',
-  },
-  {
-    name: 'Alunos ausentes e atestados',
-    type: 'PDF',
-    range: 'Aula atual',
-    owner: 'Professor Arnott',
-    status: 'Gerado',
-  },
-  {
-    name: 'Turmas ativas por disciplina',
-    type: 'Planilha',
-    range: 'Semestre vigente',
-    owner: 'Coordenação',
-    status: 'Disponível',
-  },
-  {
-    name: 'Dispositivos IoT por sala',
-    type: 'CSV',
-    range: 'Hoje',
-    owner: 'TI / Sala',
-    status: 'Atualizado',
-  },
-];
-
-const metrics = [
-  {
-    label: 'Relatórios prontos',
-    value: '12',
-    note: 'Exportação rápida para CSV, PDF e planilha',
-    icon: FileSpreadsheet,
-  },
-  {
-    label: 'Aulas analisadas',
-    value: '48',
-    note: 'Cobertura das últimas semanas letivas',
-    icon: LineChart,
-  },
-  {
-    label: 'Pendências',
-    value: '3',
-    note: 'Itens aguardando confirmação do professor',
-    icon: FileText,
-  },
-];
+type ReportRow = {
+  name: string;
+  type: string;
+  range: string;
+  owner: string;
+  status: string;
+};
 
 export function Relatorios() {
+  const [reportRows, setReportRows] = useState<ReportRow[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadReports() {
+      const [logs, presencas, aulas, turmas, dispositivos] = await Promise.all([
+        publicApi.listAcessoLogs().catch(() => []),
+        publicApi.listPresencas().catch(() => []),
+        protectedApi.listAulas().catch(() => []),
+        protectedApi.listTurmas().catch(() => []),
+        protectedApi.listDispositivos().catch(() => []),
+      ]);
+
+      const rows = [
+        {
+          name: 'Log de acessos',
+          type: 'GET /api/log-acessos',
+          range: `${logs.length} registros`,
+          owner: 'Público',
+          status: logs.length > 0 ? 'Disponível' : 'Não há dados no momento',
+        },
+        {
+          name: 'Presenças',
+          type: 'GET /api/presencas',
+          range: `${presencas.length} registros`,
+          owner: 'Público',
+          status: presencas.length > 0 ? 'Disponível' : 'Não há dados no momento',
+        },
+        {
+          name: 'Aulas',
+          type: 'GET /api/aulas',
+          range: `${aulas.length} registros`,
+          owner: 'Protegida',
+          status: aulas.length > 0 ? 'Disponível' : 'Não há dados no momento',
+        },
+        {
+          name: 'Turmas',
+          type: 'GET /api/turmas',
+          range: `${turmas.length} registros`,
+          owner: 'Protegida',
+          status: turmas.length > 0 ? 'Disponível' : 'Não há dados no momento',
+        },
+        {
+          name: 'Dispositivos',
+          type: 'GET /api/dispositivos',
+          range: `${dispositivos.length} registros`,
+          owner: 'Protegida',
+          status: dispositivos.length > 0 ? 'Disponível' : 'Não há dados no momento',
+        },
+      ];
+
+      if (isMounted) {
+        setReportRows(rows);
+      }
+    }
+
+    void loadReports();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const metrics = useMemo(
+    () => [
+      {
+        label: 'Seções prontas',
+        value: String(reportRows.filter((report) => report.status === 'Disponível').length),
+        note: reportRows.length > 0 ? 'Agrupadas pelos endpoints reais' : 'Não há dados no momento',
+        icon: FileSpreadsheet,
+      },
+      {
+        label: 'Coleções lidas',
+        value: String(reportRows.length),
+        note: reportRows.length > 0 ? 'Endpoints consultados com sucesso' : 'Não há dados no momento',
+        icon: LineChart,
+      },
+      {
+        label: 'Vazios detectados',
+        value: String(reportRows.filter((report) => report.status !== 'Disponível').length),
+        note: reportRows.length > 0 ? 'Seções sem registros ainda' : 'Não há dados no momento',
+        icon: FileText,
+      },
+    ],
+    [reportRows],
+  );
+
+  const hasData = reportRows.some((report) => report.range !== '0 registros');
+
   return (
     <Page>
       <Header>
@@ -81,8 +130,7 @@ export function Relatorios() {
           <Eyebrow>Painel de exportação</Eyebrow>
           <Title>Relatórios</Title>
           <Subtitle>
-            Consolidação de frequência, turma e dispositivos em uma área preparada
-            para exportação rápida.
+            Resumo dos dados que cada endpoint devolve no backend atual.
           </Subtitle>
         </div>
 
@@ -117,41 +165,48 @@ export function Relatorios() {
 
       <Section>
         <SectionHeader>
-          <SectionTitle>Relatórios prontos para exportar</SectionTitle>
+          <SectionTitle>Resumo dos endpoints</SectionTitle>
           <SectionBadge>
             <Download size={16} />
-            CSV, PDF e XLSX
+            Contrato real da API
           </SectionBadge>
         </SectionHeader>
 
-        <TableWrap>
-          <Table>
-            <thead>
-              <tr>
-                <th>Relatório</th>
-                <th>Formato</th>
-                <th>Período</th>
-                <th>Responsável</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportRows.map((report) => (
-                <tr key={report.name}>
-                  <td>
-                    <strong>{report.name}</strong>
-                  </td>
-                  <td>{report.type}</td>
-                  <td>{report.range}</td>
-                  <td>{report.owner}</td>
-                  <td>
-                    <Status>{report.status}</Status>
-                  </td>
+        {hasData ? (
+          <TableWrap>
+            <Table>
+              <thead>
+                <tr>
+                  <th>Recurso</th>
+                  <th>Endpoint</th>
+                  <th>Volume</th>
+                  <th>Camada</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableWrap>
+              </thead>
+              <tbody>
+                {reportRows.map((report) => (
+                  <tr key={report.name}>
+                    <td>
+                      <strong>{report.name}</strong>
+                    </td>
+                    <td>{report.type}</td>
+                    <td>{report.range}</td>
+                    <td>{report.owner}</td>
+                    <td>
+                      <Status>{report.status}</Status>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        ) : (
+          <EmptyState
+            title="Não há dados para relatórios no momento"
+            description="Quando os endpoints retornarem registros, o resumo aparecerá aqui."
+          />
+        )}
       </Section>
     </Page>
   );

@@ -43,6 +43,17 @@ export default defineConfig([
 ])
 ```
 
+## API local
+
+O frontend já está preparado para consumir a API local em `http://localhost:3333/api` durante o desenvolvimento.
+
+Variáveis de ambiente disponíveis:
+
+- `VITE_API_URL`: define a URL base completa da API quando quiser apontar para outro ambiente.
+- `VITE_API_PREFIX`: define o prefixo usado nas requisições quando `VITE_API_URL` não estiver configurada.
+
+Para o deploy futuro, basta configurar `VITE_API_URL` no ambiente e manter o restante do app sem alteração.
+
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js

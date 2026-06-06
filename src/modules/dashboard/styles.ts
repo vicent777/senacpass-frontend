@@ -29,6 +29,64 @@ export const HeaderCopy = styled.div`
   gap: 2px;
 `;
 
+export const HeaderActions = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+export const HeaderContext = styled.label`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 240px;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-width: 0;
+  }
+`;
+
+export const HeaderContextLabel = styled.span`
+  font-size: 0.78rem;
+  color: ${theme.colors.muted};
+`;
+
+export const HeaderContextNote = styled.span`
+  font-size: 0.8rem;
+  color: ${theme.colors.muted};
+`;
+
+export const AulaSelect = styled.select`
+  min-width: 240px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  color: ${theme.colors.text};
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-width: 0;
+  }
+`;
+
 export const Eyebrow = styled.span`
   font-size: 0.82rem;
   color: ${theme.colors.muted};

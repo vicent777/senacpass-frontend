@@ -1,6 +1,7 @@
 import { AlertCard } from '../AlertCard';
 import { BellRing } from 'lucide-react';
 import type { AlertsPanelData } from '../../types';
+import { EmptyState } from '../../../../components/ui/EmptyState';
 import {
   Panel,
   PanelHeader,
@@ -26,11 +27,18 @@ export function AlertsPanel({ data }: Props) {
         </PanelTitleWrap>
       </PanelHeader>
 
-      <AlertsStack>
-        {data.alerts.map((alert) => (
-          <AlertCard key={alert.id} {...alert} />
-        ))}
-      </AlertsStack>
+      {data.alerts.length === 0 ? (
+        <EmptyState
+          title="Não há alertas no momento"
+          description="Quando houver eventos, eles aparecerão aqui automaticamente."
+        />
+      ) : (
+        <AlertsStack>
+          {data.alerts.map((alert) => (
+            <AlertCard key={alert.id} {...alert} />
+          ))}
+        </AlertsStack>
+      )}
     </Panel>
   );
 }

@@ -8,6 +8,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { EmptyState } from '../../../../components/ui/EmptyState';
 import type { StudentListData } from '../../types';
 import {
   Container,
@@ -202,75 +203,81 @@ export function StudentList({ data }: Props) {
         </Toolbar>
       </Header>
 
-      <TableWrap>
-        <Table>
-          <thead>
-            <tr>
-              {data.columns.map((column) => (
-                <th
-                  key={column.key}
-                  aria-sort={sortKey === column.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                >
-                  {column.key === 'action' ? (
-                    <HeaderLabel>{column.label}</HeaderLabel>
-                  ) : (
-                    <SortButton
-                      type="button"
-                      onClick={() => {
-                        setSortKey(column.key);
-                        setSortDirection((currentDirection) =>
-                          sortKey === column.key && currentDirection === 'asc'
-                            ? 'desc'
-                            : 'asc',
-                        );
-                      }}
-                    >
-                      <span>{column.label}</span>
-                      {sortKey === column.key ? (
-                        sortDirection === 'asc' ? (
-                          <ArrowUpAZ size={14} />
-                        ) : (
-                          <ArrowDownAZ size={14} />
-                        )
-                      ) : null}
-                    </SortButton>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {paginatedItems.map((student) => (
-              <tr key={student.id}>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <img
-                      src={student.avatar}
-                      alt={student.name}
-                      style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
-                    />
-                    <strong style={{ display: 'block', minWidth: 0 }}>{student.name}</strong>
-                  </div>
-                </td>
-                <td>{student.registration}</td>
-                <td>{student.entry}</td>
-                <td>{student.permanence}</td>
-                <td>
-                  <Status status={student.status}>
-                    {student.status}
-                  </Status>
-                </td>
-                <td>
-                  <button type="button" aria-label={`Editar ${student.name}`}>
-                    <PencilLine size={14} />
-                  </button>
-                </td>
+      {data.items.length === 0 ? (
+        <EmptyState
+          title="Não há alunos cadastrados"
+          description="Quando o banco receber registros, a lista em tempo real será exibida aqui."
+        />
+      ) : (
+        <TableWrap>
+          <Table>
+            <thead>
+              <tr>
+                {data.columns.map((column) => (
+                  <th
+                    key={column.key}
+                    aria-sort={sortKey === column.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
+                    {column.key === 'action' ? (
+                      <HeaderLabel>{column.label}</HeaderLabel>
+                    ) : (
+                      <SortButton
+                        type="button"
+                        onClick={() => {
+                          setSortKey(column.key);
+                          setSortDirection((currentDirection) =>
+                            sortKey === column.key && currentDirection === 'asc'
+                              ? 'desc'
+                              : 'asc',
+                          );
+                        }}
+                      >
+                        <span>{column.label}</span>
+                        {sortKey === column.key ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUpAZ size={14} />
+                          ) : (
+                            <ArrowDownAZ size={14} />
+                          )
+                        ) : null}
+                      </SortButton>
+                    )}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </Table>
-      </TableWrap>
+            </thead>
+
+            <tbody>
+              {paginatedItems.map((student) => (
+                <tr key={student.id}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <img
+                        src={student.avatar}
+                        alt={student.name}
+                        style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
+                      />
+                      <strong style={{ display: 'block', minWidth: 0 }}>{student.name}</strong>
+                    </div>
+                  </td>
+                  <td>{student.registration}</td>
+                  <td>{student.entry}</td>
+                  <td>{student.permanence}</td>
+                  <td>
+                    <Status status={student.status}>{student.status}</Status>
+                  </td>
+                  <td>
+                    <button type="button" aria-label={`Editar ${student.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#1E6BD6', fontWeight: 600 }}>
+                      <PencilLine size={14} />
+                      Ajustar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </TableWrap>
+      )}
 
       <Footer>
         <Count>{displayLabel}</Count>

@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { dashboardMock } from './mock';
+import { useAuth } from '../../contexts/AuthContext';
+import { EMPTY_DASHBOARD_DATA, loadDashboardData, type AulaOption } from '../../services/dashboard';
 
 import { DashboardHeader } from './components/DashboardHeader';
 import { CourseOverviewCard } from './components/CourseOverviewCard';
@@ -9,163 +11,193 @@ import { AuditPanel } from './components/AuditPanel';
 import { StudentList } from './components/StudentList';
 import { DevicePanel } from './components/DevicePanel';
 import { PresenceChart } from './components/PresenceChart';
-import {
-  DashboardModal,
-  type DashboardModalKind,
-  type ModalPhase,
-} from './components/DashboardModal';
-
 import type { DeviceActionData } from './types';
 import {
   Page,
   BalancedHeroGrid,
   HeroGrid,
   ChartAndAudit,
+  HeaderContext,
+  HeaderContextLabel,
+  HeaderContextNote,
+  AulaSelect,
 } from './styles';
+import type { DashboardData } from './types';
 
 export function Dashboard() {
-  const [moduleVersion, setModuleVersion] = useState(0);
-  const [activeModal, setActiveModal] = useState<DashboardModalKind>('none');
-  const [modalPhase, setModalPhase] = useState<ModalPhase>('idle');
-  const [selectedStudentId, setSelectedStudentId] = useState(
-    dashboardMock.studentList.items[0]?.id.toString() ?? '',
-  );
-  const [justification, setJustification] = useState('');
-  const [attachmentName, setAttachmentName] = useState('');
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const professorId = user?.id ?? '';
+  const [dashboardData, setDashboardData] = useState<DashboardData>(EMPTY_DASHBOARD_DATA);
+  const [aulaOptions, setAulaOptions] = useState<AulaOption[]>([]);
+  const [selectedAulaId, setSelectedAulaId] = useState('');
+  const [selectedTurmaId, setSelectedTurmaId] = useState('');
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
+  const [refreshingDashboard, setRefreshingDashboard] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const studentOptions = useMemo(
-    () => dashboardMock.studentList.items.map((student) => ({ id: student.id.toString(), name: student.name })),
-    [],
-  );
-
-  function clearRunningTimeout() {
-    // No-op placeholder for the provisional flow.
+  function applyDashboardResult(result: Awaited<ReturnType<typeof loadDashboardData>>) {
+    setDashboardData(result.dashboardData);
+    setAulaOptions(result.aulaOptions);
+    setSelectedAulaId(result.selectedAulaId);
+    setSelectedTurmaId(result.turmaId);
   }
 
-  function openModal(kind: DashboardModalKind) {
-    clearRunningTimeout();
-    setActiveModal(kind);
-    setModalPhase('idle');
-
-    if (kind === 'start-process') {
-      setSelectedStudentId(studentOptions[0]?.id ?? '');
-      setJustification('');
-      setAttachmentName('');
-    }
-  }
-
-  function closeModal() {
-    if (modalPhase === 'running') {
+  useEffect(() => {
+    if (authLoading || !professorId) {
       return;
     }
 
-    clearRunningTimeout();
-    setActiveModal('none');
-    setModalPhase('idle');
-  }
+    let isMounted = true;
 
-  function runProvisionalAction(afterFinish: () => void) {
-    setModalPhase('running');
-    window.setTimeout(() => {
-      afterFinish();
-      setActiveModal('none');
-      setModalPhase('idle');
-    }, 1400);
-  }
+    async function fetchDashboardData() {
+      setLoadingDashboard(true);
+      setLoadError(null);
+
+      try {
+        const result = await loadDashboardData({ professorId });
+
+        if (!isMounted) {
+          return;
+        }
+
+        applyDashboardResult(result);
+      } catch (error) {
+        console.error('Erro ao carregar os dados do dashboard:', error);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setLoadError('Não foi possível carregar as aulas do professor no momento.');
+        setDashboardData(EMPTY_DASHBOARD_DATA);
+        setAulaOptions([]);
+        setSelectedAulaId('');
+        setSelectedTurmaId('');
+      } finally {
+        if (isMounted) {
+          setLoadingDashboard(false);
+        }
+      }
+    }
+
+    void fetchDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authLoading, professorId]);
+
+  const selectedAula = useMemo(
+    () => aulaOptions.find((option) => option.id === selectedAulaId),
+    [aulaOptions, selectedAulaId],
+  );
 
   function handleDeviceAction(action: DeviceActionData) {
-    if (action.icon === 'refresh') {
-      openModal('restart-sensor');
-      return;
-    }
+    if (action.icon === 'refresh' || action.icon === 'sync') {
+      if (!user?.id) {
+        return;
+      }
 
-    if (action.icon === 'sync') {
-      openModal('force-sync');
+      setRefreshingDashboard(true);
+      setLoadError(null);
+      void loadDashboardData({
+        professorId: user.id,
+        turmaId: selectedTurmaId || undefined,
+        selectedAulaId: selectedAulaId || undefined,
+      })
+        .then((result) => {
+          applyDashboardResult(result);
+        })
+        .catch((error) => {
+          console.error('Erro ao atualizar o dashboard:', error);
+          setLoadError('Não foi possível atualizar o contexto da aula.');
+        })
+        .finally(() => {
+          setRefreshingDashboard(false);
+        });
       return;
     }
 
     if (action.icon === 'lock') {
-      openModal('close-checkin');
+      navigate('/turmas');
+    }
+  }
+
+  function handleTurmasNavigation() {
+    navigate('/turmas');
+  }
+
+  function handleAulaChange(nextAulaId: string) {
+    if (!user?.id || !nextAulaId) {
       return;
     }
 
-    openModal('reopen-manual');
+    setRefreshingDashboard(true);
+    setLoadError(null);
+
+    void loadDashboardData({
+      professorId: user.id,
+      turmaId: selectedTurmaId || undefined,
+      selectedAulaId: nextAulaId,
+    })
+      .then((result) => {
+        applyDashboardResult(result);
+      })
+      .catch((error) => {
+        console.error('Erro ao trocar a aula selecionada:', error);
+        setLoadError('Não foi possível trocar a aula selecionada.');
+      })
+      .finally(() => {
+        setRefreshingDashboard(false);
+      });
   }
 
-  function handleStartProcess() {
-    openModal('start-process');
-  }
+  const rightSlot = (
+    <HeaderContext>
+      <HeaderContextLabel>Aula da turma</HeaderContextLabel>
 
-  function handleProcessSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+      <AulaSelect
+        value={selectedAulaId}
+        onChange={(event) => handleAulaChange(event.target.value)}
+        disabled={loadingDashboard || refreshingDashboard || aulaOptions.length === 0}
+      >
+        {aulaOptions.length === 0 ? (
+          <option value="">Sem aulas disponíveis</option>
+        ) : null}
 
-    runProvisionalAction(() => {
-      void selectedStudentId;
-      void justification;
-      void attachmentName;
-    });
-  }
+        {aulaOptions.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.isActive ? 'Em andamento • ' : ''}
+            {option.label}
+          </option>
+        ))}
+      </AulaSelect>
 
-  function handleSyncConfirm() {
-    runProvisionalAction(() => {
-      setModuleVersion((value) => value + 1);
-    });
-  }
-
-  function handleRestartConfirm() {
-    runProvisionalAction(() => {
-      // Provisional animation only.
-    });
-  }
-
-  function handleCloseCheckinConfirm() {
-    runProvisionalAction(() => {
-      // Provisional confirmation only.
-    });
-  }
-
-  function handleReopenManualConfirm() {
-    runProvisionalAction(() => {
-      // Provisional confirmation only.
-    });
-  }
+      <HeaderContextNote>
+        {loadError || (refreshingDashboard ? 'Atualizando a visão da aula...' : selectedAula?.label || 'Selecione uma aula para ver a turma vinculada.')}
+      </HeaderContextNote>
+    </HeaderContext>
+  );
 
   return (
-    <Page key={moduleVersion}>
-      <DashboardHeader data={dashboardMock.header} onStartProcess={handleStartProcess} />
+    <Page>
+      <DashboardHeader data={dashboardData.header} onStartProcess={handleTurmasNavigation} rightSlot={rightSlot} />
 
       <BalancedHeroGrid>
-        <CourseOverviewCard data={dashboardMock.courseOverview} />
-        <DevicePanel data={dashboardMock.devicePanel} onAction={handleDeviceAction} />
+        <CourseOverviewCard data={dashboardData.courseOverview} />
+        <DevicePanel data={dashboardData.devicePanel} onAction={handleDeviceAction} />
       </BalancedHeroGrid>
 
       <HeroGrid>
-        <AlertsPanel data={dashboardMock.alertsPanel} />
-        <StudentList data={dashboardMock.studentList} />
+        <AlertsPanel data={dashboardData.alertsPanel} />
+        <StudentList data={dashboardData.studentList} />
       </HeroGrid>
 
       <ChartAndAudit>
-        <PresenceChart data={dashboardMock.presenceChart} />
-        <AuditPanel data={dashboardMock.auditPanel} onStartProcess={handleStartProcess} />
+        <PresenceChart data={dashboardData.presenceChart} />
+        <AuditPanel data={dashboardData.auditPanel} onStartProcess={handleTurmasNavigation} />
       </ChartAndAudit>
-
-      <DashboardModal
-        activeModal={activeModal}
-        modalPhase={modalPhase}
-        selectedStudentId={selectedStudentId}
-        justification={justification}
-        attachmentName={attachmentName}
-        studentOptions={studentOptions}
-        onClose={closeModal}
-        onSelectedStudentIdChange={setSelectedStudentId}
-        onJustificationChange={setJustification}
-        onAttachmentNameChange={setAttachmentName}
-        onProcessSubmit={handleProcessSubmit}
-        onRestartConfirm={handleRestartConfirm}
-        onSyncConfirm={handleSyncConfirm}
-        onCloseCheckinConfirm={handleCloseCheckinConfirm}
-        onReopenManualConfirm={handleReopenManualConfirm}
-      />
     </Page>
   );
 }

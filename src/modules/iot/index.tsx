@@ -1,4 +1,8 @@
 import { Cpu, MapPin, Network, Radar, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import type { Dispositivo } from '../../services/resources';
+import { protectedApi } from '../../services/resources';
 import {
   Page,
   Header,
@@ -20,22 +24,36 @@ import {
   RoomTag,
 } from './styles';
 
-const devices = [
-  { id: 'IO-801-01', device: 'Sensor de presença', floor: '8º', room: '801', course: 'ADS', link: 'TADS0043', state: 'Online' },
-  { id: 'IO-802-02', device: 'Leitor RFID', floor: '8º', room: '802', course: 'ADS', link: 'TADS0043-BD', state: 'Online' },
-  { id: 'IO-803-01', device: 'Controle de acesso', floor: '8º', room: '803', course: 'ADS', link: 'TADS0043-UI', state: 'Online' },
-  { id: 'IO-1201-01', device: 'Gateway IoT', floor: '12º', room: '1201', course: 'ADS', link: 'TADS0043', state: 'Online' },
-  { id: 'IO-1604-01', device: 'Câmera de entrada', floor: '16º', room: '1604', course: 'ADS', link: 'TADS0043', state: 'Em uso' },
-  { id: 'IO-2106-01', device: 'Módulo de rede', floor: '21º', room: '2106', course: 'Jogos Digitais', link: 'JDG0021', state: 'Online' },
-];
-
-const metrics = [
-  { label: 'Dispositivos vinculados', value: '6', note: 'Apenas salas com turmas ativas', icon: Cpu },
-  { label: 'Salas monitoradas', value: '6', note: 'Numeração entre 801 e 2106', icon: MapPin },
-  { label: 'Cursos cobertos', value: '2', note: 'ADS e Jogos Digitais', icon: Network },
-];
-
 export function IoT() {
+  const [devices, setDevices] = useState<Dispositivo[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDevices() {
+      const response = await protectedApi.listDispositivos().catch(() => []);
+
+      if (isMounted) {
+        setDevices(response);
+      }
+    }
+
+    void loadDevices();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const metrics = useMemo(
+    () => [
+      { label: 'Dispositivos vinculados', value: String(devices.length), note: devices.length > 0 ? 'Dispositivos retornados pela API' : 'Não há dados no momento', icon: Cpu },
+      { label: 'Salas monitoradas', value: String(new Set(devices.map((device) => device.localizacao)).size), note: devices.length > 0 ? 'Localizações retornadas pela API' : 'Não há dados no momento', icon: MapPin },
+      { label: 'IPs ativos', value: String(new Set(devices.map((device) => device.ip)).size), note: devices.length > 0 ? 'Endereços retornados pela API' : 'Não há dados no momento', icon: Network },
+    ],
+    [devices],
+  );
+
   return (
     <Page>
       <Header>
@@ -43,8 +61,8 @@ export function IoT() {
           <Eyebrow>Infraestrutura conectada</Eyebrow>
           <Title>Dispositivos IoT</Title>
           <Subtitle>
-            Lista dos dispositivos vinculados apenas às salas onde existem turmas,
-            com identificação, andar, sala e vínculo com a disciplina.
+            Lista dos dispositivos retornados pela API com hardware, localização, IP,
+            status e última conexão.
           </Subtitle>
         </div>
 
@@ -76,44 +94,49 @@ export function IoT() {
           <SectionTitle>Dispositivos por sala</SectionTitle>
           <SectionBadge>
             <SlidersHorizontal size={16} />
-            Salas com turmas ativas
+            Contrato real da API
           </SectionBadge>
         </SectionHeader>
 
-        <TableWrap>
-          <Table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Dispositivo</th>
-                <th>Andar</th>
-                <th>Sala</th>
-                <th>Curso</th>
-                <th>Turma</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {devices.map((device) => (
-                <tr key={device.id}>
-                  <td>
-                    <strong>{device.id}</strong>
-                  </td>
-                  <td>{device.device}</td>
-                  <td>{device.floor}</td>
-                  <td>
-                    <RoomTag>{device.room}</RoomTag>
-                  </td>
-                  <td>{device.course}</td>
-                  <td>{device.link}</td>
-                  <td>
-                    <Status>{device.state}</Status>
-                  </td>
+        {devices.length === 0 ? (
+          <EmptyState
+            title="Não há dispositivos no momento"
+            description="Quando a API retornar dispositivos, a lista aparecerá aqui."
+          />
+        ) : (
+          <TableWrap>
+            <Table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Hardware</th>
+                  <th>Localização</th>
+                  <th>IP</th>
+                  <th>Status</th>
+                  <th>Última conexão</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableWrap>
+              </thead>
+              <tbody>
+                {devices.map((device) => (
+                  <tr key={device.id_dispositivo}>
+                    <td>
+                      <strong>{device.id_dispositivo}</strong>
+                    </td>
+                    <td>{device.id_hardware}</td>
+                    <td>
+                      <RoomTag>{device.localizacao}</RoomTag>
+                    </td>
+                    <td>{device.ip}</td>
+                    <td>
+                      <Status>{device.status}</Status>
+                    </td>
+                    <td>{new Date(device.ultima_conexao).toLocaleString('pt-BR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
       </Section>
     </Page>
   );

@@ -1,5 +1,6 @@
 import { ShieldAlert, History } from 'lucide-react';
 import type { AuditPanelData } from '../../types';
+import { EmptyState } from '../../../../components/ui/EmptyState';
 import {
   Panel,
   PanelHeader,
@@ -53,16 +54,23 @@ export function AuditPanel({ data, onStartProcess }: Props) {
             {data.logsTitle}
           </LogsTitle>
 
-          <LogsList>
-            {data.logs.map((log) => (
-              <LogItem key={`${log.text}-${log.time}`}>
-                <LogLeft>
-                  <LogText>{log.text}</LogText>
-                </LogLeft>
-                <LogTime>{log.time}</LogTime>
-              </LogItem>
-            ))}
-          </LogsList>
+          {data.logs.length === 0 ? (
+            <EmptyState
+              title="Sem registros de auditoria"
+              description="Quando houver acessos ou eventos recentes, eles serão listados aqui."
+            />
+          ) : (
+            <LogsList>
+              {data.logs.map((log) => (
+                <LogItem key={`${log.text}-${log.time}`}>
+                  <LogLeft>
+                    <LogText>{log.text}</LogText>
+                  </LogLeft>
+                  <LogTime>{log.time}</LogTime>
+                </LogItem>
+              ))}
+            </LogsList>
+          )}
         </div>
       </div>
     </Panel>

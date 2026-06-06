@@ -19,6 +19,21 @@ export const HeaderCopy = styled.div`
   gap: 2px;
 `;
 
+export const HeaderActions = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
 export const Eyebrow = styled.span`
   font-size: 0.82rem;
   color: ${theme.colors.muted};
