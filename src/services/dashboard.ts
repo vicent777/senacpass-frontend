@@ -72,6 +72,13 @@ function formatTime(value: string) {
 }
 
 function formatDate(value: string) {
+  const calendarDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (calendarDate) {
+    const [, year, month, day] = calendarDate;
+    return `${day}/${month}/${year}`;
+  }
+
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
