@@ -12,6 +12,7 @@ import {
   publicApi,
   protectedApi,
   type Aula,
+  type InscricaoTurma,
   type LogAcesso,
   type Presenca,
   type Turma,
@@ -101,6 +102,76 @@ function formatDateTime(value: string) {
   });
 }
 
+function getCalendarDateKey(value: string) {
+  const calendarDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (calendarDate) {
+    return `${calendarDate[1]}-${calendarDate[2]}-${calendarDate[3]}`;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayKey() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getLocalTimeMinutes(value: string) {
+  const date = new Date(value);
+
+  if (!Number.isNaN(date.getTime()) && value.includes('T')) {
+    return date.getHours() * 60 + date.getMinutes();
+  }
+
+  const time = value.match(/(\d{2}):(\d{2})/);
+  return time ? Number(time[1]) * 60 + Number(time[2]) : null;
+}
+
+function getAulaSortKey(aula: Aula) {
+  const startMinutes = getLocalTimeMinutes(aula.horario_inicio_previsto) ?? 0;
+  return `${getCalendarDateKey(aula.data_aula)}-${String(startMinutes).padStart(4, '0')}`;
+}
+
+function isAulaInProgress(aula: Aula) {
+  const aulaDate = getCalendarDateKey(aula.data_aula);
+
+  if (!aulaDate || aulaDate !== getTodayKey()) {
+    return false;
+  }
+
+  const start = getLocalTimeMinutes(aula.horario_inicio_previsto);
+  const end = getLocalTimeMinutes(aula.horario_fim_previsto);
+
+  if (start === null || end === null) {
+    return aula.status?.toUpperCase() === 'EM_ANDAMENTO';
+  }
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  return currentMinutes >= start && currentMinutes <= end;
+}
+
+function getHistoricalAulas(aulas: Aula[]) {
+  const today = getTodayKey();
+  return aulas.filter((aula) => {
+    const aulaDate = getCalendarDateKey(aula.data_aula);
+    return aulaDate !== '' && aulaDate <= today;
+  });
+}
+
 function presenceStatusLabel(status?: string): 'Presente' | 'Parcial' | 'Ausente' {
   if (!status) {
     return 'Ausente';
@@ -139,33 +210,31 @@ function alertTone(text?: string): Alert['type'] {
 
 
 function getSelectedAula(aulas: Aula[], selectedAulaId?: string) {
+  const historicalAulas = getHistoricalAulas(aulas);
+
   if (selectedAulaId) {
-    const selected = aulas.find((aula) => aula.id_aula === selectedAulaId);
+    const selected = historicalAulas.find((aula) => aula.id_aula === selectedAulaId);
 
     if (selected) {
       return selected;
     }
   }
 
-  const activeAula = aulas.find((aula) => aula.status?.toUpperCase() === 'EM_ANDAMENTO');
+  const activeAula = historicalAulas.find((aula) => isAulaInProgress(aula));
 
   if (activeAula) {
     return activeAula;
   }
 
-  return [...aulas].sort(
-    (left, right) => new Date(right.data_aula).getTime() - new Date(left.data_aula).getTime(),
+  return [...historicalAulas].sort(
+    (left, right) => getAulaSortKey(right).localeCompare(getAulaSortKey(left)),
   )[0];
 }
 
-export function buildAulaOptions(aulas: Aula[], aulasAtivas: Aula[] = []) {
-  // Cria um conjunto (Set) com os IDs das aulas que sabemos que estão ativas
-  const activeAulaIds = new Set(aulasAtivas.map(a => a.id_aula));
-
-  return [...aulas]
+export function buildAulaOptions(aulas: Aula[]) {
+  return getHistoricalAulas(aulas)
     .map((aula) => {
-      // É ativa se estiver na lista de ativas OU se o status próprio disser que sim
-      const isActive = activeAulaIds.has(aula.id_aula) || aula.status?.toUpperCase() === 'EM_ANDAMENTO';
+      const isActive = isAulaInProgress(aula);
       return { ...aula, isActive };
     })
     .sort((left, right) => {
@@ -173,7 +242,7 @@ export function buildAulaOptions(aulas: Aula[], aulasAtivas: Aula[] = []) {
         return left.isActive ? -1 : 1;
       }
 
-      return new Date(right.data_aula).getTime() - new Date(left.data_aula).getTime();
+      return getAulaSortKey(right).localeCompare(getAulaSortKey(left));
     })
     .map((aula) => ({
       id: aula.id_aula,
@@ -205,16 +274,24 @@ function buildAlerts(presencas: Presenca[]): AlertsPanelData {
   };
 }
 
-function buildStudentList(presencas: Presenca[]): StudentListData {
-  const items = presencas.map((presenca, index) => ({
+function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): StudentListData {
+  const presencasByAluno = new Map(
+    presencas.map((presenca) => [presenca.aluno.id_aluno, presenca]),
+  );
+
+  const items = inscricoes.map((inscricao, index) => {
+    const presenca = presencasByAluno.get(inscricao.aluno.id_aluno);
+
+    return {
     id: index + 1,
-    name: presenca.aluno.nome,
-    avatar: `https://i.pravatar.cc/150?u=${presenca.aluno.id_aluno}`,
-    registration: presenca.aluno.matricula_institucional,
-    entry: formatTime(presenca.horario_checkin),
-    permanence: formatMinutes(presenca.tempo_permanencia_minutos),
-    status: presenceStatusLabel(presenca.status),
-  }));
+    name: inscricao.aluno.nome,
+    avatar: `https://i.pravatar.cc/150?u=${inscricao.aluno.id_aluno}`,
+    registration: inscricao.aluno.matricula_institucional,
+    entry: presenca ? formatTime(presenca.horario_checkin) : '--:--',
+    permanence: presenca ? formatMinutes(presenca.tempo_permanencia_minutos) : '0m',
+    status: presenceStatusLabel(presenca?.status),
+    };
+  });
 
   return {
     title: 'Lista de presença da aula',
@@ -241,10 +318,11 @@ function buildStudentList(presencas: Presenca[]): StudentListData {
   };
 }
 
-function buildPresenceChart(aulas: Aula[], todasPresencas: Presenca[]): PresenceChartData {
-  const ultimasAulas = [...aulas]
-    .sort((left, right) => new Date(left.data_aula).getTime() - new Date(right.data_aula).getTime())
-    .slice(-8);
+function buildPresenceChart(aulas: Aula[], todasPresencas: Presenca[], selectedAula: Aula): PresenceChartData {
+  const selectedDate = getCalendarDateKey(selectedAula.data_aula);
+  const ultimasAulas = getHistoricalAulas(aulas)
+    .filter((aula) => getCalendarDateKey(aula.data_aula) <= selectedDate)
+    .sort((left, right) => getAulaSortKey(left).localeCompare(getAulaSortKey(right)));
 
   const data = ultimasAulas.map((aula) => {
     const presencasDaAula = todasPresencas.filter(p => p.aula.id_aula === aula.id_aula);
@@ -263,11 +341,24 @@ function buildPresenceChart(aulas: Aula[], todasPresencas: Presenca[]): Presence
   };
 }
 
-function buildCourseOverview(turma: Turma, aula: Aula, presencas: Presenca[], ucDetalhes: UnidadeCurricular | null): CourseOverviewData {
-  const totalAlunos = presencas.length;
-  const totalPresentes = presencas.filter((presence) => presence.status?.toUpperCase().includes('PRES')).length;
+function buildCourseOverview(
+  turma: Turma,
+  aula: Aula,
+  inscricoes: InscricaoTurma[],
+  presencas: Presenca[],
+  ucDetalhes: UnidadeCurricular | null,
+): CourseOverviewData {
+  const alunoIds = new Set(inscricoes.map((inscricao) => inscricao.aluno.id_aluno));
+  const totalAlunos = alunoIds.size;
+  const totalPresentes = new Set(
+    presencas
+      .filter((presence) => alunoIds.has(presence.aluno.id_aluno))
+      .filter((presence) => presence.status?.toUpperCase().includes('PRES'))
+      .map((presence) => presence.aluno.id_aluno),
+  ).size;
   const presencePercent = totalAlunos > 0 ? Math.round((totalPresentes / totalAlunos) * 100) : 0;
-  const aulaStatus = aula.status?.toUpperCase() === 'EM_ANDAMENTO' ? 'Em andamento' : aula.status || 'Selecionada';
+  const aulaEmAndamento = isAulaInProgress(aula);
+  const aulaStatus = aulaEmAndamento ? 'Em andamento' : aula.status || 'Selecionada';
 
   const nomeUc = ucDetalhes?.nome || turma.unidade_curricular.nome;
   const cargaHorariaTxt = ucDetalhes?.carga_horaria ? ` • CH: ${ucDetalhes.carga_horaria}h` : '';
@@ -280,12 +371,12 @@ function buildCourseOverview(turma: Turma, aula: Aula, presencas: Presenca[], uc
     roomLabel: 'Sala',
     roomValue: aula.dispositivo?.localizacao || 'Não há dados no momento',
     roomIcon: 'building',
-    presenceLabel: 'Presença atual',
-    presenceValue: totalAlunos > 0 ? `${totalPresentes} / ${totalAlunos} alunos` : 'Não há dados no momento',
+    presenceLabel: aulaEmAndamento ? 'Presença atual' : 'Presença',
+    presenceValue: totalAlunos > 0 ? `${totalPresentes} / ${totalAlunos} alunos` : 'Nenhum aluno inscrito',
     progress: presencePercent,
     progressNote:
       totalAlunos > 0
-        ? aula.status?.toUpperCase() === 'EM_ANDAMENTO'
+        ? aulaEmAndamento
           ? `${totalAlunos - totalPresentes} alunos ainda sem check-in`
           : 'Aula histórica selecionada'
         : 'Não há dados no momento',
@@ -346,6 +437,7 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
   const safeTurmas = Array.isArray(turmas) ? turmas : [];
   const safeActiveAulas = Array.isArray(activeAulas) ? activeAulas : [];
   const safeLogs = Array.isArray(logs) ? logs : [];
+  const safeTodasPresencas = Array.isArray(todasPresencas) ? todasPresencas : [];
 
   console.log('DEBUG 1 - Aulas ativas que chegaram da API:', activeAulas);
   console.log('DEBUG 2 - Lista segura de aulas ativas:', safeActiveAulas);
@@ -362,18 +454,23 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
     };
   }
 
-  const ucDetalhes = await protectedApi
-    .getUnidadeCurricularById(turma.unidade_curricular.id_unidade_curricular)
-    .catch(() => null);
-
-  const aulasDaTurma = await protectedApi.listAulasByTurma(turma.id_turma).catch(() => [] as Aula[]);
+  const [ucDetalhes, aulasDaTurma, inscricoesDaTurma] = await Promise.all([
+    protectedApi
+      .getUnidadeCurricularById(turma.unidade_curricular.id_unidade_curricular)
+      .catch(() => null),
+    protectedApi.listAulasByTurma(turma.id_turma).catch(() => [] as Aula[]),
+    protectedApi.listInscricoesByTurma(turma.id_turma).catch(() => [] as InscricaoTurma[]),
+  ]);
   const safeAulasDaTurma = Array.isArray(aulasDaTurma) ? aulasDaTurma : [];
+  const safeInscricoes = Array.isArray(inscricoesDaTurma)
+    ? inscricoesDaTurma.filter((inscricao) => inscricao.status?.toUpperCase() === 'ATIVO')
+    : [];
   const selectedAula = getSelectedAula(safeAulasDaTurma, selectedAulaId);
 
   if (!selectedAula) {
     return {
       dashboardData: EMPTY_DASHBOARD_DATA,
-      aulaOptions: buildAulaOptions(safeAulasDaTurma, safeActiveAulas),
+      aulaOptions: buildAulaOptions(safeAulasDaTurma),
       selectedAulaId: '',
       turmaId: turma.id_turma,
     };
@@ -390,10 +487,10 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
       title: `${turma.unidade_curricular.nome} • ${turma.codigo_turma}`,
       actionLabel: 'Turmas',
     },
-    courseOverview: buildCourseOverview(turma, selectedAula, [], ucDetalhes),
+    courseOverview: buildCourseOverview(turma, selectedAula, safeInscricoes, selectedPresencas, ucDetalhes),
     alertsPanel: buildAlerts(selectedPresencas),
-    studentList: buildStudentList(selectedPresencas),
-    presenceChart: buildPresenceChart(safeAulasDaTurma, todasPresencas),
+    studentList: buildStudentList(safeInscricoes, selectedPresencas),
+    presenceChart: buildPresenceChart(safeAulasDaTurma, safeTodasPresencas, selectedAula),
     auditPanel: buildAuditPanel(selectedLogs),
     summaryCards: [
       {
@@ -403,8 +500,8 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
       },
       {
         title: 'Alunos inscritos',
-        value: String(selectedPresencas.length),
-        subtitle: selectedPresencas.length > 0 ? 'Lista da turma selecionada' : 'Não há dados no momento',
+        value: String(safeInscricoes.length),
+        subtitle: safeInscricoes.length > 0 ? 'Inscrições ativas na turma' : 'Não há dados no momento',
       },
       {
         title: 'Leituras RFID',
@@ -417,7 +514,7 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
 
   return {
     dashboardData,
-    aulaOptions: buildAulaOptions(safeAulasDaTurma, safeActiveAulas),
+    aulaOptions: buildAulaOptions(safeAulasDaTurma),
     selectedAulaId: selectedAula.id_aula,
     turmaId: turma.id_turma,
   };
