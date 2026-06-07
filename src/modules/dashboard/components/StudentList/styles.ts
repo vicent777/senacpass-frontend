@@ -249,6 +249,23 @@ export const Table = styled.table`
   }
 `;
 
+export const StudentRow = styled.tr<{ absent: boolean }>`
+  background: ${({ absent }) => (absent ? '#f1f5f9' : '#ffffff')};
+  opacity: ${({ absent }) => (absent ? 0.72 : 1)};
+
+  td {
+    color: ${({ absent }) => (absent ? '#64748b' : theme.colors.text)} !important;
+  }
+
+  img {
+    filter: ${({ absent }) => (absent ? 'grayscale(1)' : 'none')};
+  }
+
+  &:hover {
+    background: ${({ absent }) => (absent ? '#e2e8f0' : 'rgba(248, 250, 252, 0.8)')} !important;
+  }
+`;
+
 export const SortButton = styled.button`
   display: inline-flex;
   align-items: center;

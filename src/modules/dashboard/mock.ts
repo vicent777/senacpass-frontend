@@ -265,6 +265,7 @@ export const dashboardMock: DashboardData = {
   presenceChart: {
     title: 'Histórico de presença (mês)',
     legendLabel: 'Linha da turma',
+    totalStudents: 20,
     data: [
       { time: 'Aula 1', value: 18 },
       { time: 'Aula 2', value: 19 },

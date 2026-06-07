@@ -59,7 +59,11 @@ function formatMinutes(totalMinutes: number) {
   return `${minutes}m`;
 }
 
-function formatTime(value: string) {
+function formatTime(value: string | null) {
+  if (!value) {
+    return '--:--';
+  }
+
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -172,22 +176,32 @@ function getHistoricalAulas(aulas: Aula[]) {
   });
 }
 
-function presenceStatusLabel(status?: string): 'Presente' | 'Parcial' | 'Ausente' {
-  if (!status) {
+function hasCheckIn(presenca?: Presenca) {
+  if (!presenca?.horario_checkin) {
+    return false;
+  }
+
+  return !Number.isNaN(new Date(presenca.horario_checkin).getTime());
+}
+
+function getCheckInTimestamp(presenca: Presenca) {
+  return presenca.horario_checkin
+    ? new Date(presenca.horario_checkin).getTime()
+    : 0;
+}
+
+function presenceStatusLabel(presenca?: Presenca): 'Presente' | 'Parcial' | 'Ausente' {
+  if (!hasCheckIn(presenca)) {
     return 'Ausente';
   }
 
-  const normalized = status.toUpperCase();
-
-  if (normalized.includes('PRES')) {
-    return 'Presente';
-  }
+  const normalized = presenca?.status?.toUpperCase() || '';
 
   if (normalized.includes('PARC') || normalized.includes('ATR')) {
     return 'Parcial';
   }
 
-  return 'Ausente';
+  return 'Presente';
 }
 
 function alertTone(text?: string): Alert['type'] {
@@ -261,12 +275,13 @@ function buildAlerts(presencas: Presenca[]): AlertsPanelData {
       { label: 'Parcial', color: '#F59E0B', icon: 'partial' },
       { label: 'Ausente', color: '#EF4444', icon: 'absent' },
     ],
-    alerts: [...presencas]
-      .sort((left, right) => new Date(right.horario_checkin).getTime() - new Date(left.horario_checkin).getTime())
+    alerts: presencas
+      .filter((presence) => hasCheckIn(presence))
+      .sort((left, right) => getCheckInTimestamp(right) - getCheckInTimestamp(left))
       .slice(0, 3)
       .map((presence, index) => ({
         id: index + 1,
-        title: `${presence.aluno.nome} • ${presenceStatusLabel(presence.status)}`,
+        title: `${presence.aluno.nome} • ${presenceStatusLabel(presence)}`,
         description: `${presence.aluno.matricula_institucional} • Check-in ${formatTime(presence.horario_checkin)}`,
         type: alertTone(presence.status),
         time: formatTime(presence.horario_checkin),
@@ -275,9 +290,16 @@ function buildAlerts(presencas: Presenca[]): AlertsPanelData {
 }
 
 function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): StudentListData {
-  const presencasByAluno = new Map(
-    presencas.map((presenca) => [presenca.aluno.id_aluno, presenca]),
-  );
+  const presencasByAluno = new Map<string, Presenca>();
+
+  presencas.forEach((presenca) => {
+    const alunoId = presenca.aluno.id_aluno;
+    const current = presencasByAluno.get(alunoId);
+
+    if (!current || (!hasCheckIn(current) && hasCheckIn(presenca))) {
+      presencasByAluno.set(alunoId, presenca);
+    }
+  });
 
   const items = inscricoes.map((inscricao, index) => {
     const presenca = presencasByAluno.get(inscricao.aluno.id_aluno);
@@ -289,7 +311,7 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
     registration: inscricao.aluno.matricula_institucional,
     entry: presenca ? formatTime(presenca.horario_checkin) : '--:--',
     permanence: presenca ? formatMinutes(presenca.tempo_permanencia_minutos) : '0m',
-    status: presenceStatusLabel(presenca?.status),
+    status: presenceStatusLabel(presenca),
     };
   });
 
@@ -318,25 +340,37 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
   };
 }
 
-function buildPresenceChart(aulas: Aula[], todasPresencas: Presenca[], selectedAula: Aula): PresenceChartData {
+function buildPresenceChart(
+  aulas: Aula[],
+  todasPresencas: Presenca[],
+  selectedAula: Aula,
+  inscricoes: InscricaoTurma[],
+): PresenceChartData {
   const selectedDate = getCalendarDateKey(selectedAula.data_aula);
+  const alunoIds = new Set(inscricoes.map((inscricao) => inscricao.aluno.id_aluno));
   const ultimasAulas = getHistoricalAulas(aulas)
     .filter((aula) => getCalendarDateKey(aula.data_aula) <= selectedDate)
     .sort((left, right) => getAulaSortKey(left).localeCompare(getAulaSortKey(right)));
 
   const data = ultimasAulas.map((aula) => {
-    const presencasDaAula = todasPresencas.filter(p => p.aula.id_aula === aula.id_aula);
-    const totalPresentes = presencasDaAula.filter(p => p.status?.toUpperCase().includes('PRES')).length;
+    const totalPresentes = new Set(
+      todasPresencas
+        .filter((presenca) => presenca.aula.id_aula === aula.id_aula)
+        .filter((presenca) => alunoIds.has(presenca.aluno.id_aluno))
+        .filter((presenca) => hasCheckIn(presenca))
+        .map((presenca) => presenca.aluno.id_aluno),
+    ).size;
 
     return {
-      time: formatDate(aula.data_aula),
+      time: `${formatDate(aula.data_aula)} ${formatTime(aula.horario_inicio_previsto)}`,
       value: totalPresentes,
     };
   });
 
   return {
     title: 'Presença por aula',
-    legendLabel: 'Total de presentes',
+    legendLabel: 'Presentes, parciais e atrasados',
+    totalStudents: alunoIds.size,
     data,
   };
 }
@@ -353,7 +387,7 @@ function buildCourseOverview(
   const totalPresentes = new Set(
     presencas
       .filter((presence) => alunoIds.has(presence.aluno.id_aluno))
-      .filter((presence) => presence.status?.toUpperCase().includes('PRES'))
+      .filter((presence) => hasCheckIn(presence))
       .map((presence) => presence.aluno.id_aluno),
   ).size;
   const presencePercent = totalAlunos > 0 ? Math.round((totalPresentes / totalAlunos) * 100) : 0;
@@ -490,7 +524,12 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
     courseOverview: buildCourseOverview(turma, selectedAula, safeInscricoes, selectedPresencas, ucDetalhes),
     alertsPanel: buildAlerts(selectedPresencas),
     studentList: buildStudentList(safeInscricoes, selectedPresencas),
-    presenceChart: buildPresenceChart(safeAulasDaTurma, safeTodasPresencas, selectedAula),
+    presenceChart: buildPresenceChart(
+      safeAulasDaTurma,
+      safeTodasPresencas,
+      selectedAula,
+      safeInscricoes,
+    ),
     auditPanel: buildAuditPanel(selectedLogs),
     summaryCards: [
       {
@@ -580,6 +619,7 @@ export const EMPTY_DASHBOARD_DATA: DashboardData = {
   presenceChart: {
     title: 'Presença por período',
     legendLabel: 'Tempo de permanência',
+    totalStudents: 0,
     data: [],
   },
   auditPanel: {

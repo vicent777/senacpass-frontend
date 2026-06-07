@@ -97,6 +97,7 @@ export interface ChartDataPoint {
 export interface PresenceChartData {
   title: string;
   legendLabel: string;
+  totalStudents: number;
   data: ChartDataPoint[];
 }
 

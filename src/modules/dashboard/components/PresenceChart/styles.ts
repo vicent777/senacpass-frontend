@@ -52,3 +52,10 @@ export const ChartLegendItem = styled.span<{ color: string }>`
     background: ${({ color }) => color};
   }
 `;
+
+export const ChartScroll = styled.div`
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+`;

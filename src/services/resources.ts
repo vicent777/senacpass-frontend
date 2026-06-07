@@ -67,7 +67,7 @@ export interface Presenca {
     id_aula: string;
     status: string;
   };
-  horario_checkin: string;
+  horario_checkin: string | null;
   horario_checkout: string | null;
   tempo_permanencia_minutos: number;
   status: string;

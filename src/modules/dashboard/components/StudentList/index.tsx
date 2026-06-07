@@ -30,6 +30,7 @@ import {
   HeaderTitle,
   HeaderLabel,
   SortButton,
+  StudentRow,
 } from './styles';
 
 interface Props {
@@ -249,7 +250,7 @@ export function StudentList({ data }: Props) {
 
             <tbody>
               {paginatedItems.map((student) => (
-                <tr key={student.id}>
+                <StudentRow key={student.id} absent={student.status === 'Ausente'}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <img
@@ -272,7 +273,7 @@ export function StudentList({ data }: Props) {
                       Ajustar
                     </button>
                   </td>
-                </tr>
+                </StudentRow>
               ))}
             </tbody>
           </Table>
