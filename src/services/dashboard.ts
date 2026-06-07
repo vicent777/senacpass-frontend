@@ -310,6 +310,7 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
 
     return {
     id: index + 1,
+    studentId: inscricao.aluno.id_aluno,
     presenceId: presenca?.id_presenca,
     name: inscricao.aluno.nome,
     avatar: `https://i.pravatar.cc/150?u=${inscricao.aluno.id_aluno}`,
@@ -405,7 +406,7 @@ function buildCourseOverview(
   const cargaHoraria = ucDetalhes?.carga_horaria ?? turma.unidade_curricular.carga_horaria;
 
   return {
-    title: nomeUc,
+    title: `${nomeUc}${cargaHoraria ? ` (${cargaHoraria}h)` : ''}`,
     subtitle: `${turma.professor.nome} • ${aulaStatus}`,
     dateLabel: 'Dia da aula',
     dateValue: formatDate(aula.data_aula),
@@ -414,8 +415,6 @@ function buildCourseOverview(
     roomLabel: 'Sala',
     roomValue: aula.dispositivo?.localizacao || 'Não há dados no momento',
     roomIcon: 'building',
-    workloadLabel: 'Carga horária',
-    workloadValue: cargaHoraria ? `${cargaHoraria} horas` : 'Não informada',
     presenceLabel: aulaEmAndamento ? 'Presença atual' : 'Presença',
     presenceValue: totalAlunos > 0 ? `${totalPresentes} / ${totalAlunos} alunos` : 'Nenhum aluno inscrito',
     progress: presencePercent,
@@ -527,8 +526,8 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
 
   const dashboardData: DashboardData = {
     header: {
-      eyebrow: turma.professor.nome,
-      title: 'Dashboard',
+      eyebrow: '',
+      title: turma.professor.nome,
       actionLabel: 'Turmas',
     },
     courseOverview: buildCourseOverview(turma, selectedAula, safeInscricoes, selectedPresencas, ucDetalhes),
@@ -571,8 +570,8 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
 
 export const EMPTY_DASHBOARD_DATA: DashboardData = {
   header: {
-    eyebrow: 'Professor logado',
-    title: 'Selecione uma aula ativa',
+    eyebrow: '',
+    title: 'Dashboard',
     actionLabel: 'Turmas',
   },
   courseOverview: {
@@ -585,8 +584,6 @@ export const EMPTY_DASHBOARD_DATA: DashboardData = {
     roomLabel: 'Sala',
     roomValue: 'Não há dados no momento',
     roomIcon: 'building',
-    workloadLabel: 'Carga horária',
-    workloadValue: 'Não há dados no momento',
     presenceLabel: 'Presença atual',
     presenceValue: 'Não há dados no momento',
     progress: 0,

@@ -18,8 +18,6 @@ import {
   ProgressBar,
   ProgressFill,
   ProgressNote,
-  CourseDetails,
-  CourseDetail,
   PresenceSection,
 } from './styles';
 
@@ -78,13 +76,6 @@ export function CourseOverviewCard({ data }: Props) {
               <StatValue>{data.roomValue}</StatValue>
             </StatCard>
           </StatsGrid>
-
-          <CourseDetails>
-            <CourseDetail>
-              <span>{data.workloadLabel}</span>
-              <strong>{data.workloadValue}</strong>
-            </CourseDetail>
-          </CourseDetails>
 
           <PresenceSection>
             <ProgressWrap>

@@ -20,8 +20,6 @@ export interface CourseOverviewData {
   roomLabel: string;
   roomValue: string;
   roomIcon: 'building';
-  workloadLabel: string;
-  workloadValue: string;
   presenceLabel: string;
   presenceValue: string;
   progress: number;
@@ -58,6 +56,7 @@ export interface AlertsPanelData {
 
 export interface Student {
   id: number;
+  studentId?: string;
   presenceId?: string;
   name: string;
   avatar?: string;

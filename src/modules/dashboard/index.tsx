@@ -45,6 +45,7 @@ export function Dashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [studentToJustify, setStudentToJustify] = useState<Student | null>(null);
   const [justification, setJustification] = useState('');
+  const [attachmentName, setAttachmentName] = useState('');
   const [justificationError, setJustificationError] = useState<string | null>(null);
   const [submittingJustification, setSubmittingJustification] = useState(false);
 
@@ -161,12 +162,9 @@ export function Dashboard() {
   }
 
   function handleOpenJustification(student: Student) {
-    if (!student.presenceId) {
-      return;
-    }
-
     setStudentToJustify(student);
     setJustification('');
+    setAttachmentName('');
     setJustificationError(null);
   }
 
@@ -177,13 +175,14 @@ export function Dashboard() {
 
     setStudentToJustify(null);
     setJustification('');
+    setAttachmentName('');
     setJustificationError(null);
   }
 
   async function handleJustificationSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!studentToJustify?.presenceId || !user?.id || justification.trim().length < 3) {
+    if (!studentToJustify || !user?.id || !selectedAulaId || justification.trim().length < 3) {
       return;
     }
 
@@ -191,7 +190,22 @@ export function Dashboard() {
     setJustificationError(null);
 
     try {
-      await protectedApi.justifyPresenca(studentToJustify.presenceId, justification.trim());
+      let presenceId = studentToJustify.presenceId;
+
+      if (!presenceId) {
+        if (!studentToJustify.studentId) {
+          throw new Error('Aluno sem identificador para criar a presença.');
+        }
+
+        const createdPresence = await protectedApi.createPresenca({
+          id_aluno: studentToJustify.studentId,
+          id_aula: selectedAulaId,
+          status: 'AUSENTE',
+        });
+        presenceId = createdPresence.id_presenca;
+      }
+
+      await protectedApi.justifyPresenca(presenceId, justification.trim());
       const result = await loadDashboardData({
         professorId: user.id,
         turmaId: selectedTurmaId || undefined,
@@ -200,6 +214,7 @@ export function Dashboard() {
       applyDashboardResult(result);
       setStudentToJustify(null);
       setJustification('');
+      setAttachmentName('');
     } catch (error) {
       console.error('Erro ao justificar presença:', error);
       setJustificationError('Não foi possível salvar a justificativa. Tente novamente.');
@@ -307,9 +322,11 @@ export function Dashboard() {
         submitting={submittingJustification}
         studentName={studentToJustify?.name || ''}
         justification={justification}
+        attachmentName={attachmentName}
         error={justificationError}
         onClose={handleCloseJustification}
         onJustificationChange={setJustification}
+        onAttachmentChange={(file) => setAttachmentName(file?.name || '')}
         onSubmit={handleJustificationSubmit}
       />
     </Page>

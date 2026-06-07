@@ -106,7 +106,8 @@ export const publicApi = {
 
   listPresencas: () => request<Presenca[]>('get', '/presencas'),
   getPresencaById: (id: string | number) => request<Presenca>('get', `/presencas/${id}`),
-  createPresenca: (data: unknown) => request<Presenca>('post', '/presencas', data),
+  createPresenca: (data: { id_aluno: string; id_aula: string; status: string }) =>
+    request<Presenca>('post', '/presencas', data),
 
   listAcessoLogs: () => request<LogAcesso[]>('get', '/log-acessos'),
   createAcessoLog: (data: unknown) => request<LogAcesso>('post', '/log-acessos', data),
@@ -174,6 +175,8 @@ export const protectedApi = {
 
   listPresencasByAula: (idAula: string | number) => 
     request<Presenca[]>('get', `/presencas/aula/${idAula}`),
+  createPresenca: (data: { id_aluno: string; id_aula: string; status: string }) =>
+    request<Presenca>('post', '/presencas', data),
   justifyPresenca: (id: string | number, justificativaManual: string) =>
     request<Presenca>('post', `/presencas/${id}/justificativa`, {
       status: 'JUSTIFICADO',

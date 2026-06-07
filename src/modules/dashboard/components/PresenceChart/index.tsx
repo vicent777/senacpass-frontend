@@ -1,7 +1,7 @@
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -42,7 +42,7 @@ export function PresenceChart({ data }: Props) {
         <ChartScroll>
           <div style={{ width: Math.max(560, data.data.length * 92), height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.data} margin={{ top: 8, right: 12, left: 0, bottom: 38 }}>
+              <LineChart data={data.data} margin={{ top: 8, right: 12, left: 0, bottom: 38 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis
                   dataKey="time"
@@ -62,10 +62,17 @@ export function PresenceChart({ data }: Props) {
                 />
                 <Tooltip
                   formatter={(value) => [`${value} de ${data.totalStudents} alunos`, 'Presença']}
-                  cursor={{ fill: 'rgba(30, 107, 214, 0.06)' }}
+                  cursor={{ stroke: 'rgba(30, 107, 214, 0.18)' }}
                 />
-                <Bar dataKey="value" fill="#1E6BD6" radius={[7, 7, 0, 0]} maxBarSize={44} />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#1E6BD6"
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: '#ffffff', stroke: '#1E6BD6', strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </ChartScroll>

@@ -276,7 +276,7 @@ export function StudentList({ data, onJustify }: Props) {
                   </td>
                   <td>
                     <RowActions>
-                      {(student.status === 'Parcial' || student.status === 'Ausente') && student.presenceId ? (
+                      {student.status === 'Parcial' || student.status === 'Ausente' ? (
                         <ActionButton
                           type="button"
                           aria-label={`Justificar falta de ${student.name}`}

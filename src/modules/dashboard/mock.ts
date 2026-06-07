@@ -16,8 +16,6 @@ export const dashboardMock: DashboardData = {
     roomLabel: 'Sala',
     roomValue: 'Sala 1604',
     roomIcon: 'building',
-    workloadLabel: 'Carga horária',
-    workloadValue: '60 horas',
     presenceLabel: 'Presença Atual',
     presenceValue: '16 / 20 alunos',
     progress: 80,

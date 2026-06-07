@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { FileCheck2, SquarePen, X } from 'lucide-react';
+import { FileCheck2, Paperclip, SquarePen, X } from 'lucide-react';
 import {
   Field,
   FieldLabel,
@@ -26,9 +26,11 @@ interface DashboardModalProps {
   submitting: boolean;
   studentName: string;
   justification: string;
+  attachmentName: string;
   error: string | null;
   onClose: () => void;
   onJustificationChange: (justification: string) => void;
+  onAttachmentChange: (file: File | null) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
@@ -37,9 +39,11 @@ export function DashboardModal({
   submitting,
   studentName,
   justification,
+  attachmentName,
   error,
   onClose,
   onJustificationChange,
+  onAttachmentChange,
   onSubmit,
 }: DashboardModalProps) {
   if (!open) {
@@ -98,6 +102,19 @@ export function DashboardModal({
                   minLength={3}
                   required
                 />
+              </Field>
+
+              <Field>
+                <FieldLabel>Evidência (opcional)</FieldLabel>
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                  onChange={(event) => onAttachmentChange(event.target.files?.[0] || null)}
+                />
+                <span style={{ color: '#64748b', fontSize: '0.82rem' }}>
+                  <Paperclip size={13} style={{ display: 'inline', marginRight: 6 }} />
+                  {attachmentName || 'O arquivo será mantido apenas enquanto este modal estiver aberto.'}
+                </span>
               </Field>
 
               {error ? (

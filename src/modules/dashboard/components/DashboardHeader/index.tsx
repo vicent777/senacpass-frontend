@@ -13,7 +13,7 @@ export function DashboardHeader({ data, onStartProcess, rightSlot }: Props) {
   return (
     <HeaderRow>
       <HeaderCopy>
-        <Eyebrow>{data.eyebrow}</Eyebrow>
+        {data.eyebrow ? <Eyebrow>{data.eyebrow}</Eyebrow> : null}
         <Title>{data.title}</Title>
       </HeaderCopy>
 

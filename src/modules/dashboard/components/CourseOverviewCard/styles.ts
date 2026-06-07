@@ -68,25 +68,6 @@ export const StatCard = styled.div<{ accent?: boolean }>`
 
 `;
 
-export const CourseDetails = styled.div`
-  margin-top: 12px;
-  padding: 11px 2px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-`;
-
-export const CourseDetail = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  color: ${theme.colors.muted};
-  font-size: 0.84rem;
-
-  strong {
-    color: ${theme.colors.text};
-  }
-`;
-
 export const PresenceSection = styled.div`
   margin-top: 14px;
   padding: 15px;
