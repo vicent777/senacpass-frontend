@@ -57,13 +57,13 @@ Faculdade Senac PE - Pernambuco
 ### 👥 Equipe Desenvolvedora
 
 | Nome | Função |
-|------|--------|
-| João Victor Rodrigues Basante | - |
-| João Vitor Malveira da Silva | - |
-| Maria Clara de Melo | - |
-| Renato Trancoso Branco Delgado | - |
-| Thayana Anália dos Santos Lira | - |
-| Vinicius Henrique Silva Nascimento | - |
+|---|---|
+| **Thayana Anália dos Santos Lira** | Gestora do Projeto |
+| **Renato Trancoso Branco Delgado** | Desenvolvedor FullStack & Firmware IoT |
+| **Vinicius Henrique Silva Nascimento** | Administrador de Banco de Dados (DBA) |
+| **João Vitor Malveira da Silva** | Desenvolvedor Back-End |
+| **Maria Clara de Melo** | Desenvolvedora Back-End |
+| **João Victor Rodrigues Basante** | Desenvolvedor Front-End |
 
 
 </div>
@@ -1683,177 +1683,67 @@ Developed by a multidisciplinary team of 6 undergraduate students from Senac PE'
 
 ## Dossiê de Evidências
 
+### Aplicação
+<img width="1576" height="757" alt="image" src="https://github.com/user-attachments/assets/e17dfd49-f82d-442c-a84f-e66c98cdfcc0" />
+<img width="1272" height="592" alt="image" src="https://github.com/user-attachments/assets/bc3f6791-976c-4b7c-8763-a2cee19243d6" />
+<img width="1869" height="921" alt="image" src="https://github.com/user-attachments/assets/505ed6f9-1cd1-43f8-b1ed-02680e69c783" />
+
 ### Fotos do Protótipo
 
-> INSERIR IMAGENS
->
-> Descrição: Foto frontal, lateral e detalhes do dispositivo completo montado
+<img width="1200" height="1600" alt="image" src="https://github.com/user-attachments/assets/188b44cc-47ec-45ff-a0e7-c231f39641a7" />
+<img width="1200" height="1600" alt="image" src="https://github.com/user-attachments/assets/3f4cbbaf-a2f5-4a59-8cf8-101d08b6e263" />
+<img width="1200" height="1600" alt="image" src="https://github.com/user-attachments/assets/c91a84f6-c21b-4b5e-a751-9924ddd27cbd" />
+<img width="1200" height="1600" alt="image" src="https://github.com/user-attachments/assets/15625921-db46-4b46-82a9-802ca80b197c" />
+<img width="1200" height="1600" alt="image" src="https://github.com/user-attachments/assets/a37d29b5-de2d-4e28-91af-e24df2c2c24d" />
+<img width="1200" height="1600" alt="image" src="https://github.com/user-attachments/assets/4acde412-f14e-4eff-9c93-7bd21eedb44c" />
 
 ---
-
-### ESP32-C3 Mini
-
-> INSERIR IMAGENS
->
-> - Foto do microcontrolador
-> - Pinagem e conexões
-> - Especificações técnicas
-
----
-
-### Sensor RFID (MFRC522)
-
-> INSERIR IMAGENS
->
-> - Foto do leitor RFID
-> - Antena
-> - Cartão de teste
-> - Especificações de frequência e alcance
-
----
-
-### Sensor HC-SR04
-
-> INSERIR IMAGENS
->
-> - Foto do sensor ultrassônico
-> - Distância de detecção
-> - Especificações
-
----
-
-### Dashboard Frontend
-
-> INSERIR IMAGENS
->
-> Screenshots do:
-> - Tela de login
-> - Dashboard principal
-> - Lista de presenças consultada pela API
-> - Gráficos de frequência
-> - Painel de relatórios
-
----
-
-### Aplicação Web
-
-> INSERIR IMAGENS
->
-> - Desktop view
-> - Tablet view
-> - Mobile view
-> - Responsividade
-
----
-
-### Serial Monitor (IoT)
-
-> INSERIR IMAGENS
->
-> - Logs do ESP32
-> - Eventos RFID capturados
-> - Tentativas de conexão Wi-Fi
-> - Debugging de sensores
-
----
-
 
 ## Demonstração
 
 | Item | Link | Status |
-|------|------|--------|
-| **Aplicação Web** | [Acessar aplicação](https://black-flower-0aa5e4810.7.azurestaticapps.net/) | Online |
-| **API Backend** | [Acessar API](https://senacpass-api-amc2eubab9emcxfu.centralus-01.azurewebsites.net/api/) | Online |
-| **Repositório GitHub** | [Acessar Repositório]() | Online |
-| **Slides de Apresentação** | [PREENCHER] | Online |
-| **Relatório PDF** | [PREENCHER] | [PREENCHER] |
-| **Vídeo Demostrativo** | [PREENCHER] | [PREENCHER] |
+|---|---|---|
+| Aplicação Web (Front-end) | [Acessar Dashboard](https://black-flower-0aa5e4810.7.azurestaticapps.net/dashboard) | Online |
+| API Backend | [Acessar API](https://senacpass-api-amc2eubab9emcxfu.centralus-01.azurewebsites.net/api/) | Online |
+| Repositório do Front-end | [GitHub - SenacPass Front](https://github.com/renatodelgado/senacpass-frontend) | Disponível |
+| Repositório do Back-end + IoT | [GitHub - SenacPass Back](https://github.com/renatodelgado/senacpass-backend) | Este repositório |
+| Banco de Dados (PostgreSQL) | `senacpass.postgres.database.azure.com` | Protegido (Cloud) |
+| API Backend | [Acessar API](https://senacpass-api-amc2eubab9emcxfu.centralus-01.azurewebsites.net/) | Online |
+| Slides da Apresentação | [Slide](https://www.canva.com/design/DAHIFTZtW4o/4IifhHqrdpLG9GemMxf5Gg/edit) | Disponível |
 
 ---
 
 ## Equipe
 
-### João Victor Rodrigues Basante
-
-> INSERIR FOTO
-
-**Função:** [PREENCHER]
-
-**Contribuições:** [PREENCHER]
-
-**GitHub:** [PREENCHER]
-
-**LinkedIn:** [PREENCHER]
-
----
-
-### João Vitor Malveira da Silva
-
-> INSERIR FOTO
-
-**Função:** [PREENCHER]
-
-**Contribuições:** [PREENCHER]
-
-**GitHub:** [PREENCHER]
-
-**LinkedIn:** [PREENCHER]
-
----
-
-### Maria Clara de Melo
-
-> INSERIR FOTO
-
-**Função:** [PREENCHER]
-
-**Contribuições:** [PREENCHER]
-
-**GitHub:** [PREENCHER]
-
-**LinkedIn:** [PREENCHER]
-
----
+### Thayana Anália dos Santos Lira
+**Função:** Gestora do Projeto  
+**Contribuições:** Coordenação da equipe, levantamento de requisitos, divisão de tarefas (Kanban) e garantia do escopo do MVP.  
+**LinkedIn:** *[Link](https://www.linkedin.com/in/thayanalira/)*
 
 ### Renato Trancoso Branco Delgado
-
-> INSERIR FOTO
-
-**Função:** [PREENCHER]
-
-**Contribuições:** [PREENCHER]
-
-**GitHub:** [PREENCHER]
-
-**LinkedIn:** [PREENCHER]
-
----
-
-### Thayana Anália dos Santos Lira
-
-> INSERIR FOTO
-
-**Função:** [PREENCHER]
-
-**Contribuições:** [PREENCHER]
-
-**GitHub:** [PREENCHER]
-
-**LinkedIn:** [PREENCHER]
-
----
+**Função:** Desenvolvedor FullStack e Firmware IoT  
+**Contribuições:** Desenvolvimento do firmware do ESP32, integração do leitor RFID, arquitetura das rotas da API e telas do painel.  
+**LinkedIn:** *[Link](https://www.linkedin.com/in/renato-delgado-48372b47/)*
 
 ### Vinicius Henrique Silva Nascimento
+**Função:** Administrador de Banco de Dados (DBA)  
+**Contribuições:** Modelagem de dados relacional, criação e execução das migrations com TypeORM, e garantia da integridade referencial no PostgreSQL.  
+**LinkedIn:** *[Link](https://www.linkedin.com/in/vinicius-nascimento-673230244/)*
 
-> INSERIR FOTO
+### João Vitor Malveira da Silva
+**Função:** Desenvolvedor Back-End  
+**Contribuições:** Implementação das regras de negócio na Service Layer, controle de check-in/check-out e autenticação via JWT.  
+**LinkedIn:** *[Link](https://www.linkedin.com/in/joão-vitor-malveira/)*
 
-**Função:** [PREENCHER]
+### Maria Clara de Melo
+**Função:** Desenvolvedora Back-End  
+**Contribuições:** Criação dos módulos de domínio da API, validação de payloads.  
+**LinkedIn:** *[Link](https://www.linkedin.com/in/maria-clara-de-melo-11b145247/)*
 
-**Contribuições:** [PREENCHER]
-
-**GitHub:** [PREENCHER]
-
-**LinkedIn:** [PREENCHER]
+### João Victor Rodrigues Basante
+**Função:** Desenvolvedor Front-End  
+**Contribuições:** Construção da interface do usuário, consumo dos endpoints HTTP da API e exibição dos históricos de presença no dashboard.  
+**LinkedIn:** *[Link](https://www.linkedin.com/in/joaobasante/)*
 
 ---
 
@@ -1980,14 +1870,14 @@ Gostaríamos de expressar nossa gratidão a:
 ### Professores das Unidades Curriculares
 
 | UC | Professor |
-|-------|-----------|
-| Cloud Computing | Alisom |
-| Comportamento do Consumidor | Paulo Guimarães |
-| Segurança de Sistemas da Informação | Paulo Pimentel |
-| Qualidade de Software | Paulo Pimentel |
-| IoT: Internet das Coisas | Arnott |
-| Análise e Projeto de Sistemas | Marcus |
-| Tech English 4 | Leonardo |
+|---|---|
+| Cloud Computing | ALISON VINÍCIUS GOMES DA SILVA |
+| Comportamento do Consumidor | PAULO TAVARES GUIMARÃES |
+| Segurança de Sistemas da Informação | PAULO HENRIQUE WANDERLEY GUIMARÃES PIMENTEL |
+| Qualidade de Software | PAULO HENRIQUE WANDERLEY GUIMARÃES PIMENTEL |
+| IoT: Internet das Coisas | ARNOTT RAMOS CAIADO |
+| Análise e Projeto de Sistemas | MARCUS VINÍCIUS ALMEIDA FERNANDES DE FIGUEIREDO |
+| Tech English 4 | LEONARDO LUCENA TREVAS |
 
 ### Instituição
 - **Faculdade Senac PE** - Pela oportunidade e infraestrutura
