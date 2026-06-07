@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Bell, ChevronDown, SlidersHorizontal, UserRound, X } from 'lucide-react';
-import avatar from '../../../assets/avatar.svg';
 import { useAuth } from '../../../contexts/AuthContext';
 import { protectedApi, publicApi } from '../../../services/resources';
+import { getProfilePicture } from '../../../utils/profilePicture';
 import {
   ActionButton,
   Actions,
@@ -69,6 +69,7 @@ export function Header() {
   }
 
   const displayName = professorName || user?.name || 'Professor';
+  const profilePicture = getProfilePicture(user?.id);
 
   return (
     <>
@@ -90,7 +91,7 @@ export function Header() {
 
           <User>
             <UserButton type="button" onClick={() => setOpen(!open)} aria-expanded={open}>
-              <UserAvatar src={avatar} alt={displayName} />
+              <UserAvatar src={profilePicture} alt={displayName} />
               <UserMeta>
                 <UserName>{displayName}</UserName>
                 <UserRole>Faculdade Senac Pernambuco</UserRole>
@@ -147,7 +148,7 @@ export function Header() {
             <HeaderModalBody>
               {activeModal === 'profile' ? (
                 <>
-                  <ProfileAvatar src={avatar} alt={displayName} />
+                  <ProfileAvatar src={profilePicture} alt={displayName} />
                   <ProfileDetails>
                     <strong>{displayName}</strong>
                     <span>{user?.email}</span>

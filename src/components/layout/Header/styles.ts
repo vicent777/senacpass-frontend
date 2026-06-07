@@ -179,12 +179,17 @@ export const DropdownButton = styled.button`
   width: 100%;
   padding: 9px 10px;
   border-radius: 10px;
+  border: none;
+  background: transparent;
   color: #ffffff;
   font-size: 0.95rem;
   text-align: left;
 
-  &:hover {
+  &:hover,
+  &:focus-visible {
     background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    outline: none;
   }
 `;
 

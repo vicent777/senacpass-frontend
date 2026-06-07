@@ -18,6 +18,7 @@ import {
   type Turma,
   type UnidadeCurricular,
 } from './resources';
+import { getProfilePicture } from '../utils/profilePicture';
 
 export interface AulaOption {
   id: string;
@@ -313,7 +314,7 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
     studentId: inscricao.aluno.id_aluno,
     presenceId: presenca?.id_presenca,
     name: inscricao.aluno.nome,
-    avatar: `https://i.pravatar.cc/150?u=${inscricao.aluno.id_aluno}`,
+    avatar: getProfilePicture(inscricao.aluno.id_aluno),
     registration: inscricao.aluno.matricula_institucional,
     entry: presenca ? formatTime(presenca.horario_checkin) : '--:--',
     permanence: presenca ? formatMinutes(presenca.tempo_permanencia_minutos) : '0m',
