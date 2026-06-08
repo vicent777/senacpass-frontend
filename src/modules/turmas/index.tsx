@@ -77,11 +77,10 @@ export function Turmas() {
     <Page>
       <Header>
         <div>
-          <Eyebrow>Visão geral acadêmica</Eyebrow>
+          <Eyebrow>Gestão acadêmica</Eyebrow>
           <Title>Turmas</Title>
           <Subtitle>
-            Lista das turmas retornadas pela API com unidade curricular, professor e
-            carga horária.
+            Consulte as turmas, unidades curriculares, professores responsáveis e cargas horárias.
           </Subtitle>
         </div>
 

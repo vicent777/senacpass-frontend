@@ -7,6 +7,7 @@ export interface SummaryCardData {
 export interface DashboardHeaderData {
   eyebrow: string;
   title: string;
+  subtitle: string;
   actionLabel: string;
 }
 

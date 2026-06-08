@@ -168,3 +168,50 @@ export const MenuItem = styled(NavLink)`
     font-size: 0.84rem;
   }
 `;
+
+export const SearchWrap = styled.div`
+  position: relative;
+`;
+
+export const SearchResults = styled.div`
+  position: absolute;
+  z-index: 40;
+  top: calc(100% - 14px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 4px;
+  padding: 7px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+
+  small {
+    padding: 9px;
+    color: ${theme.colors.muted};
+  }
+
+  @media (max-width: 768px) {
+    top: calc(100% + 5px);
+  }
+`;
+
+export const SearchResult = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: ${theme.colors.text};
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    background: #eef4ff;
+    color: ${theme.colors.primary};
+    outline: none;
+  }
+`;

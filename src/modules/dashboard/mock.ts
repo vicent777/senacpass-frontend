@@ -4,6 +4,7 @@ export const dashboardMock: DashboardData = {
   header: {
     eyebrow: '← Visão geral',
     title: 'Dashboard de Aula',
+    subtitle: 'Acompanhe a aula, a frequência dos alunos e os eventos recebidos.',
     actionLabel: 'Iniciar processo',
   },
   courseOverview: {

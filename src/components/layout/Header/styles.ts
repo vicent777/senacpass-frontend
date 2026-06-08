@@ -255,6 +255,74 @@ export const HeaderModalBody = styled.div`
   }
 `;
 
+export const NotificationList = styled.div`
+  display: grid;
+  width: 100%;
+  max-height: 430px;
+  overflow-y: auto;
+`;
+
+export const NotificationItem = styled.div`
+  display: flex;
+  gap: 11px;
+  padding: 12px 2px;
+
+  & + & {
+    border-top: 1px solid #edf1f5;
+  }
+`;
+
+export const NotificationIcon = styled.span<{ $tone: 'blue' | 'green' | 'orange' }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: ${({ $tone }) =>
+    $tone === 'green'
+      ? 'rgba(16, 185, 129, 0.12)'
+      : $tone === 'orange'
+        ? 'rgba(245, 158, 11, 0.14)'
+        : 'rgba(30, 107, 214, 0.1)'};
+  color: ${({ $tone }) =>
+    $tone === 'green' ? '#047857' : $tone === 'orange' ? '#b45309' : '#1d4ed8'};
+`;
+
+export const NotificationCopy = styled.div`
+  min-width: 0;
+
+  strong {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  p {
+    margin-top: 3px;
+    font-size: 0.8rem;
+  }
+`;
+
+export const NotificationTime = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  color: #94a3b8;
+  font-size: 0.72rem;
+`;
+
+export const ModalAction = styled.button`
+  margin-top: 12px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: ${theme.colors.primary};
+  color: #fff;
+  font-weight: 700;
+`;
+
 export const ProfileAvatar = styled.img`
   width: 76px;
   height: 76px;

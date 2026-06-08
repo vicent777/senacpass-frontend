@@ -527,8 +527,9 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
 
   const dashboardData: DashboardData = {
     header: {
-      eyebrow: '',
-      title: turma.professor.nome,
+      eyebrow: 'Acompanhamento acadêmico',
+      title: 'Dashboard',
+      subtitle: 'Acompanhe a aula selecionada, a frequência dos alunos e os eventos recebidos pelo sistema.',
       actionLabel: 'Turmas',
     },
     courseOverview: buildCourseOverview(turma, selectedAula, safeInscricoes, selectedPresencas, ucDetalhes),
@@ -571,8 +572,9 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
 
 export const EMPTY_DASHBOARD_DATA: DashboardData = {
   header: {
-    eyebrow: '',
+    eyebrow: 'Acompanhamento acadêmico',
     title: 'Dashboard',
+    subtitle: 'Acompanhe suas turmas, aulas, presenças e dispositivos em um só lugar.',
     actionLabel: 'Turmas',
   },
   courseOverview: {

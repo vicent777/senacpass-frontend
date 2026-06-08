@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Bell, ChevronDown, SlidersHorizontal, UserRound, X } from 'lucide-react';
+import { Bell, ChevronDown, Clock3, SlidersHorizontal, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import type { Aluno, Aula, LogAcesso, Presenca, Turma } from '../../../services/resources';
 import { protectedApi, publicApi } from '../../../services/resources';
 import { getProfilePicture } from '../../../utils/profilePicture';
 import {
@@ -16,6 +18,12 @@ import {
   HeaderModalHeader,
   HeaderModalOverlay,
   HeaderModalTitle,
+  ModalAction,
+  NotificationCopy,
+  NotificationIcon,
+  NotificationItem,
+  NotificationList,
+  NotificationTime,
   ProfileAvatar,
   ProfileDetails,
   Status,
@@ -29,13 +37,64 @@ import {
 
 type HeaderModal = 'profile' | 'preferences' | 'notifications' | null;
 
+type Notification = {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  tone: 'blue' | 'green' | 'orange';
+};
+
 export function Header() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<HeaderModal>(null);
   const [professorName, setProfessorName] = useState('');
   const [curricularUnits, setCurricularUnits] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => localStorage.getItem('@SenacPass:notifications') !== 'false',
+  );
   const { user, logout } = useAuth();
-  const isOnline = true;
+
+  useEffect(() => {
+    function updateConnection() {
+      setIsOnline(navigator.onLine);
+    }
+
+    window.addEventListener('online', updateConnection);
+    window.addEventListener('offline', updateConnection);
+
+    return () => {
+      window.removeEventListener('online', updateConnection);
+      window.removeEventListener('offline', updateConnection);
+    };
+  }, []);
+
+  useEffect(() => {
+    function updatePreferences() {
+      setNotificationsEnabled(
+        localStorage.getItem('@SenacPass:notifications') !== 'false',
+      );
+    }
+
+    function updateProfile(event: Event) {
+      const customEvent = event as CustomEvent<{ name?: string }>;
+      if (customEvent.detail?.name) {
+        setProfessorName(customEvent.detail.name);
+      }
+    }
+
+    window.addEventListener('senacpass:preferences', updatePreferences);
+    window.addEventListener('senacpass:profile', updateProfile);
+
+    return () => {
+      window.removeEventListener('senacpass:preferences', updatePreferences);
+      window.removeEventListener('senacpass:profile', updateProfile);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user?.id) {
@@ -44,24 +103,77 @@ export function Header() {
 
     let mounted = true;
 
-    void Promise.all([
-      publicApi.getProfessorById(user.id).catch(() => null),
-      protectedApi.listTurmasByProfessor(user.id).catch(() => []),
-    ]).then(([professor, turmas]) => {
+    async function loadHeaderData() {
+      const [professor, turmas, logs, presencas, alunos] = await Promise.all([
+        publicApi.getProfessorById(user!.id).catch(() => null),
+        protectedApi.listTurmasByProfessor(user!.id).catch(() => [] as Turma[]),
+        publicApi.listAcessoLogs().catch(() => [] as LogAcesso[]),
+        protectedApi.listPresencas().catch(() => [] as Presenca[]),
+        protectedApi.listAlunos().catch(() => [] as Aluno[]),
+      ]);
+      const aulas = (
+        await Promise.all(
+          turmas.map((turma) =>
+            protectedApi.listAulasByTurma(turma.id_turma).catch(() => [] as Aula[]),
+          ),
+        )
+      ).flat();
+
       if (!mounted) {
         return;
       }
 
-      setProfessorName(professor?.nome || user.name || 'Professor');
+      const aulaIds = new Set(aulas.map((aula) => aula.id_aula));
+      const deviceIds = new Set(
+        aulas
+          .map((aula) => aula.dispositivo?.id_dispositivo)
+          .filter((id): id is string => Boolean(id)),
+      );
+      const alunoByRfid = new Map(alunos.map((aluno) => [aluno.rfid_uid, aluno]));
+      const presenceNotifications: Notification[] = presencas
+        .filter((presenca) => aulaIds.has(presenca.aula.id_aula) && presenca.horario_checkin)
+        .map((presenca) => ({
+          id: `presence-${presenca.id_presenca}`,
+          title: `${presenca.aluno.nome} registrou presença`,
+          description: `Status: ${presenca.status || 'PRESENTE'}`,
+          date: presenca.horario_checkin || '',
+          tone: 'green',
+        }));
+      const logNotifications: Notification[] = logs
+        .filter((log) => deviceIds.has(log.dispositivo?.id_dispositivo))
+        .map((log) => {
+          const aluno = alunoByRfid.get(log.rfid_uid);
+
+          return {
+            id: `log-${log.id_log}`,
+            title:
+              log.tipo_evento === 'RFID_IGNORADO_SEM_AULA'
+                ? 'Leitura RFID sem aula ativa'
+                : `RFID recebido${aluno ? ` de ${aluno.nome}` : ''}`,
+            description: `${log.rfid_uid} • ${log.dispositivo?.nome || log.dispositivo?.localizacao || 'Dispositivo'}`,
+            date: log.data_hora,
+            tone: log.tipo_evento === 'RFID_IGNORADO_SEM_AULA' ? 'orange' : 'blue',
+          } satisfies Notification;
+        });
+
+      setProfessorName(professor?.nome || user!.name || 'Professor');
       setCurricularUnits([
         ...new Set(turmas.map((turma) => turma.unidade_curricular.nome).filter(Boolean)),
       ]);
-    });
+      setNotifications(
+        [...presenceNotifications, ...logNotifications]
+          .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
+          .slice(0, 10),
+      );
+      setLoadingNotifications(false);
+    }
+
+    void loadHeaderData();
 
     return () => {
       mounted = false;
     };
-  }, [user?.id, user?.name]);
+  }, [user]);
 
   function openModal(modal: Exclude<HeaderModal, null>) {
     setOpen(false);
@@ -70,7 +182,6 @@ export function Header() {
 
   const displayName = professorName || user?.name || 'Professor';
   const profilePicture = getProfilePicture(user?.id);
-
   return (
     <>
       <Container>
@@ -86,7 +197,7 @@ export function Header() {
             onClick={() => openModal('notifications')}
           >
             <Bell size={16} />
-            <span aria-hidden="true" />
+            {notificationsEnabled && notifications.length > 0 ? <span aria-hidden="true" /> : null}
           </ActionButton>
 
           <User>
@@ -168,17 +279,49 @@ export function Header() {
                   <SlidersHorizontal size={30} />
                   <div>
                     <strong>Preferências do sistema</strong>
-                    <p>Configurações de aparência e comportamento estarão disponíveis aqui.</p>
+                    <p>Gerencie perfil, notificações e comportamento da aplicação.</p>
+                    <ModalAction
+                      type="button"
+                      onClick={() => {
+                        setActiveModal(null);
+                        navigate('/configuracoes');
+                      }}
+                    >
+                      Abrir configurações
+                    </ModalAction>
                   </div>
                 </>
               ) : (
-                <>
-                  <UserRound size={30} />
-                  <div>
-                    <strong>Nenhuma nova notificação</strong>
-                    <p>Os avisos sobre aulas e dispositivos aparecerão neste espaço.</p>
-                  </div>
-                </>
+                <NotificationList>
+                  {loadingNotifications ? (
+                    <p>Carregando eventos do professor...</p>
+                  ) : notificationsEnabled && notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <NotificationItem key={notification.id}>
+                        <NotificationIcon $tone={notification.tone}>
+                          <Bell size={15} />
+                        </NotificationIcon>
+                        <NotificationCopy>
+                          <strong>{notification.title}</strong>
+                          <p>{notification.description}</p>
+                          <NotificationTime>
+                            <Clock3 size={12} />
+                            {new Date(notification.date).toLocaleString('pt-BR')}
+                          </NotificationTime>
+                        </NotificationCopy>
+                      </NotificationItem>
+                    ))
+                  ) : (
+                    <div>
+                      <strong>Sem notificações para exibir</strong>
+                      <p>
+                        {notificationsEnabled
+                          ? 'Novos registros das suas turmas aparecerão aqui.'
+                          : 'As notificações estão desativadas nas configurações.'}
+                      </p>
+                    </div>
+                  )}
+                </NotificationList>
               )}
             </HeaderModalBody>
           </HeaderModalCard>
