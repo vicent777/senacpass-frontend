@@ -8,7 +8,9 @@ import {
   Search,
   Users,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import type {
   Aluno,
@@ -157,12 +159,14 @@ function eventLabel(event: string) {
 }
 
 export function Relatorios() {
+  const reportDocumentRef = useRef<HTMLElement>(null);
   const [data, setData] = useState<ReportData>(EMPTY_DATA);
   const [viewMode, setViewMode] = useState<ViewMode>('turma');
   const [selectedTurmaId, setSelectedTurmaId] = useState('');
   const [selectedAlunoId, setSelectedAlunoId] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function loadReport() {
@@ -374,6 +378,107 @@ export function Relatorios() {
     window.print();
   }
 
+  async function handleExportPdf() {
+    const element = reportDocumentRef.current;
+
+    if (!element || exportingPdf) {
+      return;
+    }
+
+    setExportingPdf(true);
+    setError(null);
+
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: Math.max(element.scrollWidth, 1100),
+      });
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+      const margin = 10;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const printableWidth = pageWidth - margin * 2;
+      const printableHeight = pageHeight - margin * 2;
+      const sliceHeight = Math.floor(
+        canvas.width * (printableHeight / printableWidth),
+      );
+      let offset = 0;
+      let page = 0;
+
+      while (offset < canvas.height) {
+        const currentSliceHeight = Math.min(sliceHeight, canvas.height - offset);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = currentSliceHeight;
+        const context = pageCanvas.getContext('2d');
+
+        if (!context) {
+          throw new Error('Não foi possível preparar a página do PDF.');
+        }
+
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        context.drawImage(
+          canvas,
+          0,
+          offset,
+          canvas.width,
+          currentSliceHeight,
+          0,
+          0,
+          canvas.width,
+          currentSliceHeight,
+        );
+
+        if (page > 0) {
+          pdf.addPage();
+        }
+
+        const renderedHeight =
+          (currentSliceHeight * printableWidth) / canvas.width;
+        pdf.addImage(
+          pageCanvas.toDataURL('image/jpeg', 0.95),
+          'JPEG',
+          margin,
+          margin,
+          printableWidth,
+          renderedHeight,
+          undefined,
+          'FAST',
+        );
+
+        offset += currentSliceHeight;
+        page += 1;
+      }
+
+      const subject =
+        viewMode === 'aluno' && selectedAluno
+          ? selectedAluno.nome
+          : selectedTurma?.codigo_turma || 'relatorio';
+      const fileName = `senacpass-${subject}`
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .toLowerCase();
+
+      pdf.save(`${fileName}.pdf`);
+    } catch (exportError) {
+      console.error('Erro ao exportar o relatório em PDF:', exportError);
+      setError('Não foi possível gerar o PDF do relatório.');
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   if (loading) {
     return (
       <Page>
@@ -402,9 +507,13 @@ export function Relatorios() {
             <RefreshCw size={16} />
             Atualizar
           </ActionButton>
-          <ActionButton type="button" onClick={handlePrint}>
+          <ActionButton
+            type="button"
+            onClick={() => void handleExportPdf()}
+            disabled={exportingPdf}
+          >
             <Download size={16} />
-            Exportar PDF
+            {exportingPdf ? 'Gerando PDF...' : 'Exportar PDF'}
           </ActionButton>
           <ActionButton type="button" onClick={handlePrint}>
             <Printer size={16} />
@@ -480,7 +589,7 @@ export function Relatorios() {
         )}
       </Controls>
 
-      <ReportDocument>
+      <ReportDocument ref={reportDocumentRef}>
         <DocumentHeader>
           <DocumentBrand>
             <span>SenacPass</span>

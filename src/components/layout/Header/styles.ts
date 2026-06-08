@@ -2,6 +2,8 @@ import styled from 'styled-components';
 import { theme } from '../../../styles/theme';
 
 export const Container = styled.header`
+  position: relative;
+  z-index: 70;
   width: 100%;
   height: 64px;
 
@@ -42,6 +44,8 @@ export const Dot = styled.div<{ online: boolean }>`
 `;
 
 export const Actions = styled.div`
+  position: relative;
+  z-index: 71;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -86,6 +90,7 @@ export const ActionButton = styled.button`
 
 export const User = styled.div`
   position: relative;
+  z-index: 72;
 `;
 
 export const UserButton = styled.button`
@@ -154,6 +159,7 @@ export const UserRole = styled.span`
 
 export const Dropdown = styled.div`
   position: absolute;
+  z-index: 1000;
   right: 0;
   top: calc(100% + 10px);
 
@@ -166,6 +172,7 @@ export const Dropdown = styled.div`
   backdrop-filter: blur(10px);
 
   min-width: 160px;
+  font-family: inherit;
 
   hr {
     margin: 6px 0;
@@ -183,6 +190,7 @@ export const DropdownButton = styled.button`
   background: transparent;
   color: #ffffff;
   font-size: 0.95rem;
+  font-family: inherit;
   text-align: left;
 
   &:hover,

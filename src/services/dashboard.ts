@@ -234,11 +234,6 @@ function alertTone(text?: string): Alert['type'] {
 
 function getSelectedAula(aulas: Aula[], selectedAulaId?: string) {
   const historicalAulas = getHistoricalAulas(aulas);
-  const activeAula = aulas.find((aula) => isAulaInProgress(aula));
-
-  if (activeAula) {
-    return activeAula;
-  }
 
   if (selectedAulaId) {
     const selected = historicalAulas.find((aula) => aula.id_aula === selectedAulaId);
@@ -248,19 +243,19 @@ function getSelectedAula(aulas: Aula[], selectedAulaId?: string) {
     }
   }
 
+  const activeAula = aulas.find((aula) => isAulaInProgress(aula));
+
+  if (activeAula) {
+    return activeAula;
+  }
+
   return [...historicalAulas].sort(
     (left, right) => getAulaSortKey(right).localeCompare(getAulaSortKey(left)),
   )[0];
 }
 
 export function buildAulaOptions(aulas: Aula[]) {
-  const activeAula = aulas.find((aula) => isAulaInProgress(aula));
-  const latestAula = [...getHistoricalAulas(aulas)].sort(
-    (left, right) => getAulaSortKey(right).localeCompare(getAulaSortKey(left)),
-  )[0];
-  const visibleAulas = activeAula ? [activeAula] : latestAula ? [latestAula] : [];
-
-  return visibleAulas
+  return getHistoricalAulas(aulas)
     .map((aula) => ({ ...aula, isActive: isAulaInProgress(aula) }))
     .sort((left, right) => {
       if (left.isActive !== right.isActive) {

@@ -71,6 +71,11 @@ export const ActionButton = styled.button`
     background: ${theme.colors.primary};
     color: #fff;
   }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
 `;
 
 export const ErrorMessage = styled.div`

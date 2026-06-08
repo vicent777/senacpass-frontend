@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, ChevronDown, Clock3, SlidersHorizontal, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -47,6 +47,7 @@ type Notification = {
 
 export function Header() {
   const navigate = useNavigate();
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<HeaderModal>(null);
   const [professorName, setProfessorName] = useState('');
@@ -72,6 +73,35 @@ export function Header() {
       window.removeEventListener('offline', updateConnection);
     };
   }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
 
   useEffect(() => {
     function updatePreferences() {
@@ -200,7 +230,7 @@ export function Header() {
             {notificationsEnabled && notifications.length > 0 ? <span aria-hidden="true" /> : null}
           </ActionButton>
 
-          <User>
+          <User ref={userMenuRef}>
             <UserButton type="button" onClick={() => setOpen(!open)} aria-expanded={open}>
               <UserAvatar src={profilePicture} alt={displayName} />
               <UserMeta>

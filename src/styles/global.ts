@@ -7,10 +7,23 @@ export const GlobalStyle = createGlobalStyle`
     box-sizing: border-box;
   }
 
+  html,
+  body,
+  #root {
+    font-family: 'Open Sans', sans-serif;
+  }
+
   body {
     font-family: 'Open Sans', sans-serif;
     background: #F5F7FA;
     color: #1F2937;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
   }
 
   button {

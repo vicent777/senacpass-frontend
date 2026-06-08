@@ -66,6 +66,7 @@ export const Search = styled.div`
     background: transparent;
     outline: none;
     width: 100%;
+    font-family: inherit;
   }
 
   @media (max-width: 768px) {
@@ -207,6 +208,7 @@ export const SearchResult = styled.button`
   background: transparent;
   color: ${theme.colors.text};
   text-align: left;
+  font-family: inherit;
 
   &:hover,
   &:focus-visible {
