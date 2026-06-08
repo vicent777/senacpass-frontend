@@ -17,11 +17,12 @@ export function getAttendanceStatus(presenca?: Presenca): AttendanceStatus {
     return 'Justificado';
   }
 
-  if (!hasValidDate(presenca.horario_checkin) || status.includes('AUSENT')) {
+  if (!hasValidDate(presenca.horario_checkin)) {
     return 'Ausente';
   }
 
   const isPartialStatus =
+    status.includes('AUSENT') ||
     status.includes('ABERT') ||
     status.includes('PARC') ||
     status.includes('ATRAS') ||

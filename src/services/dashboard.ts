@@ -239,7 +239,12 @@ function alertTone(text?: string): Alert['type'] {
     return 'danger';
   }
 
-  if (normalized.includes('atras') || normalized.includes('suspe')) {
+  if (
+    normalized.includes('atras') ||
+    normalized.includes('ausent') ||
+    normalized.includes('parcial') ||
+    normalized.includes('suspe')
+  ) {
     return 'warning';
   }
 
