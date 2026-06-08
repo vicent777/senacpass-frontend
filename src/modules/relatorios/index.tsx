@@ -16,11 +16,10 @@ import type {
   Aluno,
   Aula,
   InscricaoTurma,
-  LogAcesso,
   Presenca,
   Turma,
 } from '../../services/resources';
-import { protectedApi, publicApi } from '../../services/resources';
+import { protectedApi } from '../../services/resources';
 import {
   ActionButton,
   Actions,
@@ -29,10 +28,6 @@ import {
   ErrorMessage,
   Eyebrow,
   Header,
-  LogEvent,
-  LogList,
-  LogMeta,
-  LogRow,
   Page,
   Progress,
   ProgressBar,
@@ -70,7 +65,6 @@ type ReportData = {
   aulas: Aula[];
   inscricoes: InscricaoTurma[];
   presencas: Presenca[];
-  logs: LogAcesso[];
 };
 
 type AttendanceStatus = 'Presente' | 'Parcial' | 'Justificado' | 'Ausente';
@@ -81,23 +75,44 @@ const EMPTY_DATA: ReportData = {
   aulas: [],
   inscricoes: [],
   presencas: [],
-  logs: [],
 };
 
 function dateKey(value: string) {
   return value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || '';
 }
 
-function isPastOrToday(aula: Aula) {
-  const key = dateKey(aula.data_aula);
-  const today = new Date();
-  const todayKey = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, '0'),
-    String(today.getDate()).padStart(2, '0'),
-  ].join('-');
+function getTimeMinutes(value: string) {
+  const parsed = new Date(value);
 
-  return Boolean(key && key <= todayKey);
+  if (!Number.isNaN(parsed.getTime()) && value.includes('T')) {
+    return parsed.getHours() * 60 + parsed.getMinutes();
+  }
+
+  const time = value.match(/(\d{2}):(\d{2})/);
+  return time ? Number(time[1]) * 60 + Number(time[2]) : null;
+}
+
+function getAulaStartTimestamp(aula: Aula) {
+  const key = dateKey(aula.data_aula);
+  const minutes = getTimeMinutes(aula.horario_inicio_previsto);
+
+  if (!key || minutes === null) {
+    return null;
+  }
+
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(
+    year,
+    month - 1,
+    day,
+    Math.floor(minutes / 60),
+    minutes % 60,
+  ).getTime();
+}
+
+function hasAulaStarted(aula: Aula) {
+  const start = getAulaStartTimestamp(aula);
+  return start !== null && start <= Date.now();
 }
 
 function formatDate(value: string) {
@@ -109,14 +124,6 @@ function formatDate(value: string) {
   }
 
   return 'Data indisponível';
-}
-
-function formatDateTime(value: string) {
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? 'Data indisponível'
-    : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function formatTime(value: string | null) {
@@ -148,16 +155,6 @@ function getAttendanceStatus(presenca?: Presenca): AttendanceStatus {
   return 'Ausente';
 }
 
-function eventLabel(event: string) {
-  const labels: Record<string, string> = {
-    RFID_LEITURA: 'Leitura RFID',
-    RFID_IGNORADO_SEM_AULA: 'Leitura sem aula',
-    JUSTIFICATIVA_MANUAL: 'Justificativa manual',
-  };
-
-  return labels[event] || event.replaceAll('_', ' ');
-}
-
 export function Relatorios() {
   const reportDocumentRef = useRef<HTMLElement>(null);
   const [data, setData] = useState<ReportData>(EMPTY_DATA);
@@ -174,13 +171,12 @@ export function Relatorios() {
     setError(null);
 
     try {
-      const [turmas, alunos, aulas, inscricoes, presencas, logs] = await Promise.all([
+      const [turmas, alunos, aulas, inscricoes, presencas] = await Promise.all([
         protectedApi.listTurmas(),
         protectedApi.listAlunos(),
         protectedApi.listAulas(),
         protectedApi.listInscricoesTurmas(),
         protectedApi.listPresencas(),
-        publicApi.listAcessoLogs(),
       ]);
 
       const nextData = {
@@ -189,7 +185,6 @@ export function Relatorios() {
         aulas: Array.isArray(aulas) ? aulas : [],
         inscricoes: Array.isArray(inscricoes) ? inscricoes : [],
         presencas: Array.isArray(presencas) ? presencas : [],
-        logs: Array.isArray(logs) ? logs : [],
       };
 
       setData(nextData);
@@ -211,8 +206,11 @@ export function Relatorios() {
   const turmaAulas = useMemo(
     () =>
       data.aulas
-        .filter((aula) => aula.turma.id_turma === selectedTurmaId && isPastOrToday(aula))
-        .sort((left, right) => right.data_aula.localeCompare(left.data_aula)),
+        .filter((aula) => aula.turma.id_turma === selectedTurmaId && hasAulaStarted(aula))
+        .sort(
+          (left, right) =>
+            (getAulaStartTimestamp(right) || 0) - (getAulaStartTimestamp(left) || 0),
+        ),
     [data.aulas, selectedTurmaId],
   );
   const turmaInscricoes = useMemo(
@@ -316,46 +314,6 @@ export function Relatorios() {
           })
         : [],
     [presencasByAlunoAndAula, selectedAluno, turmaAulas],
-  );
-
-  const alunoByRfid = useMemo(
-    () => new Map(data.alunos.map((aluno) => [aluno.rfid_uid, aluno])),
-    [data.alunos],
-  );
-  const turmaAlunoIds = useMemo(
-    () => new Set(turmaInscricoes.map((inscricao) => inscricao.aluno.id_aluno)),
-    [turmaInscricoes],
-  );
-  const turmaDeviceIds = useMemo(
-    () =>
-      new Set(
-        turmaAulas
-          .map((aula) => aula.dispositivo?.id_dispositivo)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    [turmaAulas],
-  );
-  const filteredLogs = useMemo(
-    () =>
-      data.logs
-        .filter((log) => {
-          const aluno = alunoByRfid.get(log.rfid_uid);
-
-          if (viewMode === 'aluno') {
-            return Boolean(selectedAluno && log.rfid_uid === selectedAluno.rfid_uid);
-          }
-
-          return Boolean(
-            (aluno && turmaAlunoIds.has(aluno.id_aluno)) ||
-              (log.dispositivo?.id_dispositivo &&
-                turmaDeviceIds.has(log.dispositivo.id_dispositivo)),
-          );
-        })
-        .sort(
-          (left, right) =>
-            new Date(right.data_hora).getTime() - new Date(left.data_hora).getTime(),
-        ),
-    [alunoByRfid, data.logs, selectedAluno, turmaAlunoIds, turmaDeviceIds, viewMode],
   );
 
   const totalExpected = turmaAulas.length * turmaInscricoes.length;
@@ -484,7 +442,7 @@ export function Relatorios() {
       <Page>
         <EmptyState
           title="Carregando relatórios"
-          description="Consolidando turmas, aulas, presenças e logs. Aguarde um momento."
+          description="Consolidando turmas, aulas e presenças. Aguarde um momento."
         />
       </Page>
     );
@@ -636,7 +594,7 @@ export function Relatorios() {
         <SummaryCard>
           <SummaryLabel>Aulas realizadas</SummaryLabel>
           <SummaryValue>{turmaAulas.length}</SummaryValue>
-          <SummaryNote>Até a data de hoje</SummaryNote>
+          <SummaryNote>Somente aulas já iniciadas</SummaryNote>
           <CalendarCheck size={19} />
         </SummaryCard>
         <SummaryCard>
@@ -737,46 +695,6 @@ export function Relatorios() {
             }
           />
         ) : null}
-        </Section>
-
-        <Section>
-        <SectionHeader>
-          <SectionTitle>Logs de acesso</SectionTitle>
-          <SectionBadge>
-            <Activity size={15} />
-            {filteredLogs.length} eventos
-          </SectionBadge>
-        </SectionHeader>
-
-        {filteredLogs.length > 0 ? (
-          <LogList>
-            {filteredLogs.map((log) => {
-              const aluno = alunoByRfid.get(log.rfid_uid);
-              const deviceName =
-                log.dispositivo?.nome ||
-                log.dispositivo?.localizacao ||
-                'Dispositivo não informado';
-
-              return (
-                <LogRow key={log.id_log}>
-                  <div>
-                    <LogEvent>{eventLabel(log.tipo_evento)}</LogEvent>
-                    <strong>{aluno?.nome || 'RFID não vinculado a um aluno'}</strong>
-                    <LogMeta>
-                      UID {log.rfid_uid} • {deviceName}
-                    </LogMeta>
-                  </div>
-                  <time>{formatDateTime(log.data_hora)}</time>
-                </LogRow>
-              );
-            })}
-          </LogList>
-        ) : (
-          <EmptyState
-            title="Nenhum log encontrado"
-            description="Não há eventos RFID relacionados à seleção atual."
-          />
-        )}
         </Section>
 
         <DocumentFooter>

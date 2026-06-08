@@ -93,7 +93,7 @@ export function Turmas() {
 
         <SectionBadge>
           <BookOpen size={18} />
-          API de turmas
+          {turmas.length} turmas vinculadas
         </SectionBadge>
       </Header>
 
@@ -119,7 +119,7 @@ export function Turmas() {
           <SectionTitle>Turmas vinculadas</SectionTitle>
           <SectionBadge>
             <BookOpen size={16} />
-            Contrato real da API
+            Selecione uma turma para acompanhar
           </SectionBadge>
         </SectionHeader>
 
