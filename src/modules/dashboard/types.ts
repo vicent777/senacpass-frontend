@@ -63,6 +63,7 @@ export interface Student {
   avatar?: string;
   registration: string;
   entry: string;
+  exit?: string;
   permanence: string;
   status: 'Presente' | 'Parcial' | 'Ausente' | 'Justificado';
   justification?: string;

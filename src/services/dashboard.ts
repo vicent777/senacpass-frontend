@@ -201,6 +201,23 @@ function hasCheckOut(presenca?: Presenca) {
   return !Number.isNaN(new Date(presenca.horario_checkout).getTime());
 }
 
+function isEarlyCheckOut(presenca: Presenca, aula: Aula) {
+  if (!hasCheckIn(presenca) || !hasCheckOut(presenca)) {
+    return false;
+  }
+
+  const checkOut = new Date(presenca.horario_checkout as string).getTime();
+  const classEnd = getAulaDateTime(aula, 'end');
+  const statusIndicatesEarlyExit = presenca.status?.toUpperCase().includes('AUSENT');
+
+  if (classEnd !== null) {
+    const minutesBeforeEnd = Math.floor((classEnd - checkOut) / 60000);
+    return minutesBeforeEnd >= 30 || statusIndicatesEarlyExit;
+  }
+
+  return statusIndicatesEarlyExit;
+}
+
 function formatCount(count: number, singular: string, plural: string) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -316,6 +333,7 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
     avatar: getProfilePicture(inscricao.aluno.id_aluno),
     registration: inscricao.aluno.matricula_institucional,
     entry: presenca ? formatTime(presenca.horario_checkin) : '--:--',
+    exit: presenca ? formatTime(presenca.horario_checkout) : '--:--',
     permanence: presenca ? formatMinutes(presenca.tempo_permanencia_minutos) : '0m',
     status: getAttendanceStatus(presenca),
     justification: presenca?.justificativa_manual || undefined,
@@ -337,6 +355,7 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
       { key: 'name', label: 'Aluno' },
       { key: 'registration', label: 'Matrícula' },
       { key: 'entry', label: 'Entrada' },
+      { key: 'exit', label: 'Saída' },
       { key: 'permanence', label: 'Permanência' },
       { key: 'status', label: 'Status' },
       { key: 'action', label: 'Ação' },
@@ -416,7 +435,6 @@ function buildCourseOverview(
     if (
       registros.some(
         (presence) =>
-          getAttendanceStatus(presence) === 'Parcial' &&
           hasCheckIn(presence) &&
           !hasCheckOut(presence),
       )
@@ -424,17 +442,11 @@ function buildCourseOverview(
       alunosComCheckInAberto.add(alunoId);
     }
 
-    if (
-      registros.some(
-        (presence) =>
-          getAttendanceStatus(presence) === 'Parcial' &&
-          hasCheckOut(presence),
-      )
-    ) {
+    if (registros.some((presence) => isEarlyCheckOut(presence, aula))) {
       alunosComSaidaAntecipada.add(alunoId);
     }
 
-    if (registros.some((presence) => getAttendanceStatus(presence) === 'Parcial')) {
+    if (registros.some((presence) => hasCheckIn(presence))) {
       alunosParciais.add(alunoId);
     }
   });
@@ -477,7 +489,7 @@ function buildCourseOverview(
       totalAlunos > 0
         ? aulaEmAndamento
           ? `${formatCount(alunosParciais.size, 'parcial', 'parciais')}: ${formatCount(alunosComCheckInAberto.size, 'com check-in em andamento', 'com check-in em andamento')} • ${formatCount(alunosComSaidaAntecipada.size, 'saiu antes do tempo mínimo', 'saíram antes do tempo mínimo')} • ${formatCount(totalSemCheckIn, 'sem check-in', 'sem check-in')}`
-          : `${formatCount(alunosParciais.size, 'presença parcial', 'presenças parciais')} • ${formatCount(totalSemCheckIn, 'sem check-in', 'sem check-in')}`
+          : `${formatCount(alunosParciais.size, 'aluno com check-in', 'alunos com check-in')} • ${formatCount(alunosComSaidaAntecipada.size, 'saída antecipada', 'saídas antecipadas')} • ${formatCount(totalSemCheckIn, 'sem check-in', 'sem check-in')}`
         : 'Não há dados no momento',
     optionsLabel: 'Mais opções',
   };
@@ -695,6 +707,7 @@ export const EMPTY_DASHBOARD_DATA: DashboardData = {
       { key: 'name', label: 'Aluno' },
       { key: 'registration', label: 'Matrícula' },
       { key: 'entry', label: 'Entrada' },
+      { key: 'exit', label: 'Saída' },
       { key: 'permanence', label: 'Permanência' },
       { key: 'status', label: 'Status' },
       { key: 'action', label: 'Ação' },

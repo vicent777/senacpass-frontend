@@ -211,12 +211,12 @@ export const Table = styled.table`
      and only allows horizontal scrolling on very small screens */
   thead th:nth-child(1),
   tbody td:nth-child(1) {
-    width: 35%; /* Aluno */
+    width: 30%; /* Aluno */
   }
 
   thead th:nth-child(2),
   tbody td:nth-child(2) {
-    width: 15%; /* Matrícula */
+    width: 14%; /* Matrícula */
   }
 
   thead th:nth-child(3),
@@ -226,22 +226,27 @@ export const Table = styled.table`
 
   thead th:nth-child(4),
   tbody td:nth-child(4) {
-    width: 15%; /* Permanência */
+    width: 10%; /* Saída */
   }
 
   thead th:nth-child(5),
   tbody td:nth-child(5) {
-    width: 15%; /* Status */
+    width: 14%; /* Permanência */
   }
 
   thead th:nth-child(6),
   tbody td:nth-child(6) {
-    width: 10%; /* Ação */
+    width: 14%; /* Status */
+  }
+
+  thead th:nth-child(7),
+  tbody td:nth-child(7) {
+    width: 8%; /* Ação */
   }
 
   @media (max-width: 600px) {
     table-layout: auto;
-    min-width: 680px; /* allow horizontal scroll on very small screens */
+    min-width: 760px; /* allow horizontal scroll on very small screens */
   }
 `;
 

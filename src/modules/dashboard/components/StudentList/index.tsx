@@ -130,6 +130,12 @@ export function StudentList({ data, onJustify }: Props) {
           parseTimeValue(right.entry),
           sortDirection,
         );
+      case 'exit':
+        return compareValues(
+          parseTimeValue(left.exit || '--:--'),
+          parseTimeValue(right.exit || '--:--'),
+          sortDirection,
+        );
       case 'permanence':
         return compareValues(
           parseDurationValue(left.permanence),
@@ -270,6 +276,7 @@ export function StudentList({ data, onJustify }: Props) {
                   </td>
                   <td>{student.registration}</td>
                   <td>{student.entry}</td>
+                  <td>{student.exit || '--:--'}</td>
                   <td>{student.permanence}</td>
                   <td>
                     <Status status={student.status}>{student.status}</Status>

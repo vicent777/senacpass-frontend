@@ -75,6 +75,7 @@ export const dashboardMock: DashboardData = {
       { key: 'name', label: 'Aluno' },
       { key: 'registration', label: 'Matrícula' },
       { key: 'entry', label: 'Entrada' },
+      { key: 'exit', label: 'Saída' },
       { key: 'permanence', label: 'Permanência' },
       { key: 'status', label: 'Status' },
       { key: 'action', label: 'Ação' },
