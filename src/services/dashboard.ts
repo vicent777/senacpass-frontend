@@ -19,6 +19,10 @@ import {
   type UnidadeCurricular,
 } from './resources';
 import { getProfilePicture } from '../utils/profilePicture';
+import {
+  attendanceStatusRank,
+  getAttendanceStatus,
+} from '../utils/attendanceStatus';
 
 export interface AulaOption {
   id: string;
@@ -195,24 +199,6 @@ function getCheckInTimestamp(presenca: Presenca) {
     : 0;
 }
 
-function presenceStatusLabel(presenca?: Presenca): 'Presente' | 'Parcial' | 'Ausente' | 'Justificado' {
-  const normalized = presenca?.status?.toUpperCase() || '';
-
-  if (normalized.includes('JUSTIFIC')) {
-    return 'Justificado';
-  }
-
-  if (!hasCheckIn(presenca)) {
-    return 'Ausente';
-  }
-
-  if (normalized.includes('PARC') || normalized.includes('ATR')) {
-    return 'Parcial';
-  }
-
-  return 'Presente';
-}
-
 function alertTone(text?: string): Alert['type'] {
   if (!text) {
     return 'success';
@@ -287,7 +273,7 @@ function buildAlerts(presencas: Presenca[]): AlertsPanelData {
       .slice(0, 3)
       .map((presence, index) => ({
         id: index + 1,
-        title: `${presence.aluno.nome} • ${presenceStatusLabel(presence)}`,
+        title: `${presence.aluno.nome} • ${getAttendanceStatus(presence)}`,
         description: `${presence.aluno.matricula_institucional} • Check-in ${formatTime(presence.horario_checkin)}`,
         type: alertTone(presence.status),
         time: formatTime(presence.horario_checkin),
@@ -302,7 +288,7 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
     const alunoId = presenca.aluno.id_aluno;
     const current = presencasByAluno.get(alunoId);
 
-    if (!current || (!hasCheckIn(current) && hasCheckIn(presenca))) {
+    if (!current || attendanceStatusRank(presenca) > attendanceStatusRank(current)) {
       presencasByAluno.set(alunoId, presenca);
     }
   });
@@ -319,7 +305,7 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
     registration: inscricao.aluno.matricula_institucional,
     entry: presenca ? formatTime(presenca.horario_checkin) : '--:--',
     permanence: presenca ? formatMinutes(presenca.tempo_permanencia_minutos) : '0m',
-    status: presenceStatusLabel(presenca),
+    status: getAttendanceStatus(presenca),
     justification: presenca?.justificativa_manual || undefined,
     };
   });
@@ -367,7 +353,7 @@ function buildPresenceChart(
       todasPresencas
         .filter((presenca) => presenca.aula.id_aula === aula.id_aula)
         .filter((presenca) => alunoIds.has(presenca.aluno.id_aluno))
-        .filter((presenca) => hasCheckIn(presenca))
+        .filter((presenca) => getAttendanceStatus(presenca) === 'Presente')
         .map((presenca) => presenca.aluno.id_aluno),
     ).size;
 
@@ -379,7 +365,7 @@ function buildPresenceChart(
 
   return {
     title: 'Presença por aula',
-    legendLabel: 'Presentes, parciais e atrasados',
+    legendLabel: 'Presenças concluídas',
     totalStudents: alunoIds.size,
     data,
   };
@@ -397,7 +383,13 @@ function buildCourseOverview(
   const totalPresentes = new Set(
     presencas
       .filter((presence) => alunoIds.has(presence.aluno.id_aluno))
-      .filter((presence) => hasCheckIn(presence))
+      .filter((presence) => getAttendanceStatus(presence) === 'Presente')
+      .map((presence) => presence.aluno.id_aluno),
+  ).size;
+  const totalParciais = new Set(
+    presencas
+      .filter((presence) => alunoIds.has(presence.aluno.id_aluno))
+      .filter((presence) => getAttendanceStatus(presence) === 'Parcial')
       .map((presence) => presence.aluno.id_aluno),
   ).size;
   const presencePercent = totalAlunos > 0 ? Math.round((totalPresentes / totalAlunos) * 100) : 0;
@@ -423,7 +415,7 @@ function buildCourseOverview(
     progressNote:
       totalAlunos > 0
         ? aulaEmAndamento
-          ? `${totalAlunos - totalPresentes} alunos ainda sem check-in`
+          ? `${totalParciais} parciais • ${Math.max(0, totalAlunos - totalPresentes - totalParciais)} sem check-in`
           : 'Aula histórica selecionada'
         : 'Não há dados no momento',
     optionsLabel: 'Mais opções',

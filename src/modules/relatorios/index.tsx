@@ -21,6 +21,10 @@ import type {
 } from '../../services/resources';
 import { protectedApi } from '../../services/resources';
 import {
+  attendanceStatusRank,
+  getAttendanceStatus,
+} from '../../utils/attendanceStatus';
+import {
   ActionButton,
   Actions,
   Control,
@@ -66,8 +70,6 @@ type ReportData = {
   inscricoes: InscricaoTurma[];
   presencas: Presenca[];
 };
-
-type AttendanceStatus = 'Presente' | 'Parcial' | 'Justificado' | 'Ausente';
 
 const EMPTY_DATA: ReportData = {
   turmas: [],
@@ -135,24 +137,6 @@ function formatTime(value: string | null) {
   return Number.isNaN(date.getTime())
     ? '--:--'
     : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function getAttendanceStatus(presenca?: Presenca): AttendanceStatus {
-  const status = presenca?.status?.toUpperCase() || '';
-
-  if (status.includes('JUSTIFIC')) {
-    return 'Justificado';
-  }
-
-  if (status.includes('PARC') || status.includes('ATRAS')) {
-    return 'Parcial';
-  }
-
-  if (presenca?.horario_checkin || status.includes('PRESENT')) {
-    return 'Presente';
-  }
-
-  return 'Ausente';
 }
 
 export function Relatorios() {
@@ -240,7 +224,7 @@ export function Relatorios() {
       const key = `${presenca.aluno.id_aluno}:${presenca.aula.id_aula}`;
       const current = map.get(key);
 
-      if (!current || getAttendanceStatus(current) === 'Ausente') {
+      if (!current || attendanceStatusRank(presenca) > attendanceStatusRank(current)) {
         map.set(key, presenca);
       }
     });
@@ -257,9 +241,8 @@ export function Relatorios() {
               presencasByAlunoAndAula.get(`${inscricao.aluno.id_aluno}:${aula.id_aula}`),
             ),
           );
-          const presencas = statuses.filter(
-            (status) => status === 'Presente' || status === 'Parcial',
-          ).length;
+          const presencas = statuses.filter((status) => status === 'Presente').length;
+          const parciais = statuses.filter((status) => status === 'Parcial').length;
           const justificadas = statuses.filter((status) => status === 'Justificado').length;
           const ausencias = statuses.filter((status) => status === 'Ausente').length;
           const frequencia =
@@ -270,6 +253,7 @@ export function Relatorios() {
           return {
             aluno: inscricao.aluno,
             presencas,
+            parciais,
             justificadas,
             ausencias,
             frequencia,
@@ -626,6 +610,7 @@ export function Relatorios() {
                   <th>Aluno</th>
                   <th>Matrícula</th>
                   <th>Presenças</th>
+                  <th>Parciais</th>
                   <th>Justificadas</th>
                   <th>Ausências</th>
                   <th>Frequência</th>
@@ -638,6 +623,7 @@ export function Relatorios() {
                     <td><strong>{row.aluno.nome}</strong></td>
                     <td>{row.aluno.matricula_institucional}</td>
                     <td>{row.presencas}</td>
+                    <td>{row.parciais}</td>
                     <td>{row.justificadas}</td>
                     <td>{row.ausencias}</td>
                     <td>
