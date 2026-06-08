@@ -1,5 +1,5 @@
 ﻿import { createContext, useState, useEffect, useContext, type ReactNode } from 'react';
-import api from '../services/api';
+import api, { isTokenExpired } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 interface User {
@@ -34,10 +34,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storagedUser = localStorage.getItem('@SenacPass:user');
     const storagedToken = localStorage.getItem('token');
 
-    if (storagedToken && storagedUser) {
+    if (storagedToken && storagedUser && !isTokenExpired(storagedToken)) {
       // Re-configure the api interceptor to ensure it has the token, though it's set in api.ts as well
       // eslint-disable-next-line react-hooks/set-state-in-effect
       try { setUser(JSON.parse(storagedUser)); } catch { localStorage.removeItem('@SenacPass:user'); localStorage.removeItem('token'); }
+    } else {
+      localStorage.removeItem('@SenacPass:user');
+      localStorage.removeItem('token');
     }
 
     setLoading(false);

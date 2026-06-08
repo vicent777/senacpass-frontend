@@ -37,6 +37,7 @@ export interface DashboardLoadInput {
 export interface DashboardLoadResult {
   dashboardData: DashboardData;
   aulaOptions: AulaOption[];
+  turmaOptions: Array<{ id: string; label: string }>;
   selectedAulaId: string;
   turmaId: string;
 }
@@ -126,14 +127,6 @@ function getCalendarDateKey(value: string) {
   return `${year}-${month}-${day}`;
 }
 
-function getTodayKey() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 function getLocalTimeMinutes(value: string) {
   const date = new Date(value);
 
@@ -150,30 +143,41 @@ function getAulaSortKey(aula: Aula) {
   return `${getCalendarDateKey(aula.data_aula)}-${String(startMinutes).padStart(4, '0')}`;
 }
 
-function isAulaInProgress(aula: Aula) {
-  const aulaDate = getCalendarDateKey(aula.data_aula);
+function getAulaDateTime(aula: Aula, boundary: 'start' | 'end') {
+  const date = getCalendarDateKey(aula.data_aula);
+  const timeValue =
+    boundary === 'start'
+      ? aula.horario_inicio_previsto
+      : aula.horario_fim_previsto;
+  const minutes = getLocalTimeMinutes(timeValue);
 
-  if (!aulaDate || aulaDate !== getTodayKey()) {
-    return false;
+  if (!date || minutes === null) {
+    return null;
   }
 
-  const start = getLocalTimeMinutes(aula.horario_inicio_previsto);
-  const end = getLocalTimeMinutes(aula.horario_fim_previsto);
+  const [year, month, day] = date.split('-').map(Number);
+  const hours = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return new Date(year, month - 1, day, hours, minute).getTime();
+}
+
+function isAulaInProgress(aula: Aula) {
+  const start = getAulaDateTime(aula, 'start');
+  const end = getAulaDateTime(aula, 'end');
 
   if (start === null || end === null) {
     return aula.status?.toUpperCase() === 'EM_ANDAMENTO';
   }
 
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  return currentMinutes >= start && currentMinutes <= end;
+  const now = Date.now();
+  return now >= start && now <= end;
 }
 
 function getHistoricalAulas(aulas: Aula[]) {
-  const today = getTodayKey();
+  const now = Date.now();
   return aulas.filter((aula) => {
-    const aulaDate = getCalendarDateKey(aula.data_aula);
-    return aulaDate !== '' && aulaDate <= today;
+    const start = getAulaDateTime(aula, 'start');
+    return start !== null && start <= now;
   });
 }
 
@@ -230,6 +234,11 @@ function alertTone(text?: string): Alert['type'] {
 
 function getSelectedAula(aulas: Aula[], selectedAulaId?: string) {
   const historicalAulas = getHistoricalAulas(aulas);
+  const activeAula = aulas.find((aula) => isAulaInProgress(aula));
+
+  if (activeAula) {
+    return activeAula;
+  }
 
   if (selectedAulaId) {
     const selected = historicalAulas.find((aula) => aula.id_aula === selectedAulaId);
@@ -239,23 +248,20 @@ function getSelectedAula(aulas: Aula[], selectedAulaId?: string) {
     }
   }
 
-  const activeAula = historicalAulas.find((aula) => isAulaInProgress(aula));
-
-  if (activeAula) {
-    return activeAula;
-  }
-
   return [...historicalAulas].sort(
     (left, right) => getAulaSortKey(right).localeCompare(getAulaSortKey(left)),
   )[0];
 }
 
 export function buildAulaOptions(aulas: Aula[]) {
-  return getHistoricalAulas(aulas)
-    .map((aula) => {
-      const isActive = isAulaInProgress(aula);
-      return { ...aula, isActive };
-    })
+  const activeAula = aulas.find((aula) => isAulaInProgress(aula));
+  const latestAula = [...getHistoricalAulas(aulas)].sort(
+    (left, right) => getAulaSortKey(right).localeCompare(getAulaSortKey(left)),
+  )[0];
+  const visibleAulas = activeAula ? [activeAula] : latestAula ? [latestAula] : [];
+
+  return visibleAulas
+    .map((aula) => ({ ...aula, isActive: isAulaInProgress(aula) }))
     .sort((left, right) => {
       if (left.isActive !== right.isActive) {
         return left.isActive ? -1 : 1;
@@ -486,13 +492,30 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
   console.log('DEBUG 1 - Aulas ativas que chegaram da API:', activeAulas);
   console.log('DEBUG 2 - Lista segura de aulas ativas:', safeActiveAulas);
 
-  const initialTurmaId = turmaId || safeActiveAulas[0]?.turma?.id_turma || safeTurmas[0]?.id_turma || '';
+  const activeAula = safeActiveAulas.find((aula) => isAulaInProgress(aula));
+  const latestStartedAula = [...safeActiveAulas]
+    .filter((aula) => {
+      const start = getAulaDateTime(aula, 'start');
+      return start !== null && start <= Date.now();
+    })
+    .sort((left, right) => getAulaSortKey(right).localeCompare(getAulaSortKey(left)))[0];
+  const turmaOptions = safeTurmas.map((item) => ({
+    id: item.id_turma,
+    label: `${item.codigo_turma} - ${item.unidade_curricular.nome}`,
+  }));
+  const initialTurmaId =
+    turmaId ||
+    activeAula?.turma?.id_turma ||
+    latestStartedAula?.turma?.id_turma ||
+    safeTurmas[0]?.id_turma ||
+    '';
   const turma = safeTurmas.find((item) => item.id_turma === initialTurmaId) ?? safeTurmas[0];
 
   if (!turma) {
     return {
       dashboardData: EMPTY_DASHBOARD_DATA,
       aulaOptions: [],
+      turmaOptions: [],
       selectedAulaId: '',
       turmaId: '',
     };
@@ -515,6 +538,7 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
     return {
       dashboardData: EMPTY_DASHBOARD_DATA,
       aulaOptions: buildAulaOptions(safeAulasDaTurma),
+      turmaOptions,
       selectedAulaId: '',
       turmaId: turma.id_turma,
     };
@@ -565,6 +589,7 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
   return {
     dashboardData,
     aulaOptions: buildAulaOptions(safeAulasDaTurma),
+    turmaOptions,
     selectedAulaId: selectedAula.id_aula,
     turmaId: turma.id_turma,
   };

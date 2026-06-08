@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CalendarPlus, LoaderCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { EMPTY_DASHBOARD_DATA, loadDashboardData, type AulaOption } from '../../services/dashboard';
@@ -34,10 +34,13 @@ import type { DashboardData } from './types';
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTurmaId = useRef(searchParams.get('turma') || undefined);
   const { user, loading: authLoading } = useAuth();
   const professorId = user?.id ?? '';
   const [dashboardData, setDashboardData] = useState<DashboardData>(EMPTY_DASHBOARD_DATA);
   const [aulaOptions, setAulaOptions] = useState<AulaOption[]>([]);
+  const [turmaOptions, setTurmaOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [selectedAulaId, setSelectedAulaId] = useState('');
   const [selectedTurmaId, setSelectedTurmaId] = useState('');
   const [loadingDashboard, setLoadingDashboard] = useState(true);
@@ -52,6 +55,7 @@ export function Dashboard() {
   function applyDashboardResult(result: Awaited<ReturnType<typeof loadDashboardData>>) {
     setDashboardData(result.dashboardData);
     setAulaOptions(result.aulaOptions);
+    setTurmaOptions(result.turmaOptions);
     setSelectedAulaId(result.selectedAulaId);
     setSelectedTurmaId(result.turmaId);
   }
@@ -68,7 +72,10 @@ export function Dashboard() {
       setLoadError(null);
 
       try {
-        const result = await loadDashboardData({ professorId });
+        const result = await loadDashboardData({
+          professorId,
+          turmaId: initialTurmaId.current,
+        });
 
         if (!isMounted) {
           return;
@@ -161,6 +168,27 @@ export function Dashboard() {
       });
   }
 
+  function handleTurmaChange(nextTurmaId: string) {
+    if (!user?.id || !nextTurmaId) {
+      return;
+    }
+
+    setRefreshingDashboard(true);
+    setLoadError(null);
+    setSearchParams({ turma: nextTurmaId });
+
+    void loadDashboardData({
+      professorId: user.id,
+      turmaId: nextTurmaId,
+    })
+      .then((result) => applyDashboardResult(result))
+      .catch((error) => {
+        console.error('Erro ao trocar a turma selecionada:', error);
+        setLoadError('Não foi possível carregar a turma selecionada.');
+      })
+      .finally(() => setRefreshingDashboard(false));
+  }
+
   function handleOpenJustification(student: Student) {
     setStudentToJustify(student);
     setJustification('');
@@ -246,8 +274,20 @@ export function Dashboard() {
 
   const rightSlot = (
     <HeaderContext>
-      <HeaderContextLabel>Aula da turma</HeaderContextLabel>
+      <HeaderContextLabel>Turma</HeaderContextLabel>
+      <AulaSelect
+        value={selectedTurmaId}
+        onChange={(event) => handleTurmaChange(event.target.value)}
+        disabled={loadingDashboard || refreshingDashboard || turmaOptions.length === 0}
+      >
+        {turmaOptions.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label}
+          </option>
+        ))}
+      </AulaSelect>
 
+      <HeaderContextLabel>Aula exibida</HeaderContextLabel>
       <AulaSelect
         value={selectedAulaId}
         onChange={(event) => handleAulaChange(event.target.value)}

@@ -32,9 +32,13 @@ import {
   LogMeta,
   LogRow,
   Page,
-  PrintHeader,
   Progress,
   ProgressBar,
+  ReportDocument,
+  DocumentBrand,
+  DocumentDetails,
+  DocumentFooter,
+  DocumentHeader,
   ReportMeta,
   ReportPrintStyles,
   SearchControl,
@@ -361,6 +365,10 @@ export function Relatorios() {
     viewMode === 'aluno' && selectedAluno
       ? `Relatório individual - ${selectedAluno.nome}`
       : `Relatório da turma - ${selectedTurma?.codigo_turma || 'Sem turma'}`;
+  const reportPeriod =
+    turmaAulas.length > 0
+      ? `${formatDate(turmaAulas[turmaAulas.length - 1].data_aula)} a ${formatDate(turmaAulas[0].data_aula)}`
+      : 'Sem aulas realizadas';
 
   function handlePrint() {
     window.print();
@@ -380,12 +388,6 @@ export function Relatorios() {
   return (
     <Page>
       <ReportPrintStyles />
-      <PrintHeader>
-        <strong>SenacPass</strong>
-        <span>{reportTitle}</span>
-        <small>Gerado em {new Date().toLocaleString('pt-BR')}</small>
-      </PrintHeader>
-
       <Header>
         <div>
           <Eyebrow>Frequência e auditoria</Eyebrow>
@@ -478,15 +480,44 @@ export function Relatorios() {
         )}
       </Controls>
 
-      <ReportMeta>
-        <strong>{reportTitle}</strong>
-        <span>
-          {selectedTurma?.unidade_curricular.nome || 'Unidade curricular não informada'} •{' '}
-          {turmaAulas.length} aulas contabilizadas
-        </span>
-      </ReportMeta>
+      <ReportDocument>
+        <DocumentHeader>
+          <DocumentBrand>
+            <span>SenacPass</span>
+            <small>Faculdade Senac Pernambuco</small>
+          </DocumentBrand>
+          <div>
+            <strong>Relatório de frequência acadêmica</strong>
+            <small>Emitido em {new Date().toLocaleString('pt-BR')}</small>
+          </div>
+        </DocumentHeader>
 
-      <SummaryGrid>
+        <ReportMeta>
+          <div>
+            <small>Documento</small>
+            <strong>{reportTitle}</strong>
+          </div>
+          <DocumentDetails>
+            <div>
+              <small>Unidade curricular</small>
+              <span>{selectedTurma?.unidade_curricular.nome || 'Não informada'}</span>
+            </div>
+            <div>
+              <small>Professor</small>
+              <span>{selectedTurma?.professor.nome || 'Não informado'}</span>
+            </div>
+            <div>
+              <small>Período apurado</small>
+              <span>{reportPeriod}</span>
+            </div>
+            <div>
+              <small>Aulas contabilizadas</small>
+              <span>{turmaAulas.length}</span>
+            </div>
+          </DocumentDetails>
+        </ReportMeta>
+
+        <SummaryGrid>
         <SummaryCard>
           <SummaryLabel>Alunos na turma</SummaryLabel>
           <SummaryValue>{turmaInscricoes.length}</SummaryValue>
@@ -509,9 +540,9 @@ export function Relatorios() {
           <SummaryNote>Presenças e justificativas</SummaryNote>
           <Activity size={19} />
         </SummaryCard>
-      </SummaryGrid>
+        </SummaryGrid>
 
-      <Section>
+        <Section>
         <SectionHeader>
           <SectionTitle>
             {viewMode === 'turma' ? 'Frequência por aluno' : 'Histórico de aulas'}
@@ -524,6 +555,7 @@ export function Relatorios() {
             <Table>
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Aluno</th>
                   <th>Matrícula</th>
                   <th>Presenças</th>
@@ -533,8 +565,9 @@ export function Relatorios() {
                 </tr>
               </thead>
               <tbody>
-                {studentRows.map((row) => (
+                {studentRows.map((row, index) => (
                   <tr key={row.aluno.id_aluno}>
+                    <td>{String(index + 1).padStart(2, '0')}</td>
                     <td><strong>{row.aluno.nome}</strong></td>
                     <td>{row.aluno.matricula_institucional}</td>
                     <td>{row.presencas}</td>
@@ -558,6 +591,7 @@ export function Relatorios() {
             <Table>
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Data</th>
                   <th>Aula</th>
                   <th>Entrada</th>
@@ -567,8 +601,9 @@ export function Relatorios() {
                 </tr>
               </thead>
               <tbody>
-                {studentHistory.map(({ aula, presenca, status }) => (
+                {studentHistory.map(({ aula, presenca, status }, index) => (
                   <tr key={aula.id_aula}>
+                    <td>{String(index + 1).padStart(2, '0')}</td>
                     <td>{formatDate(aula.data_aula)}</td>
                     <td>{aula.turma.codigo_turma}</td>
                     <td>{formatTime(presenca?.horario_checkin || null)}</td>
@@ -593,9 +628,9 @@ export function Relatorios() {
             }
           />
         ) : null}
-      </Section>
+        </Section>
 
-      <Section>
+        <Section>
         <SectionHeader>
           <SectionTitle>Logs de acesso</SectionTitle>
           <SectionBadge>
@@ -633,7 +668,13 @@ export function Relatorios() {
             description="Não há eventos RFID relacionados à seleção atual."
           />
         )}
-      </Section>
+        </Section>
+
+        <DocumentFooter>
+          <span>SenacPass • Controle automatizado de frequência acadêmica</span>
+          <span>Documento gerado eletronicamente</span>
+        </DocumentFooter>
+      </ReportDocument>
     </Page>
   );
 }

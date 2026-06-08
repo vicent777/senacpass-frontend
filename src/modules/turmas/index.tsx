@@ -1,6 +1,8 @@
-import { BookOpen, CalendarDays, GraduationCap, Users } from 'lucide-react';
+import { ArrowRight, BookOpen, CalendarDays, GraduationCap, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useAuth } from '../../contexts/AuthContext';
 import type { Turma } from '../../services/resources';
 import { protectedApi } from '../../services/resources';
 import {
@@ -20,16 +22,21 @@ import {
   SectionBadge,
   TableWrap,
   Table,
+  RowAction,
 } from './styles';
 
 export function Turmas() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [turmas, setTurmas] = useState<Turma[]>([]);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadTurmas() {
-      const response = await protectedApi.listTurmas().catch(() => []);
+      const response = user?.id
+        ? await protectedApi.listTurmasByProfessor(user.id).catch(() => [])
+        : [];
 
       if (isMounted) {
         setTurmas(response);
@@ -41,7 +48,7 @@ export function Turmas() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user?.id]);
 
   const summary = useMemo(() => {
     const totalCargaHoraria = turmas.reduce(
@@ -131,6 +138,7 @@ export function Turmas() {
                   <th>Carga horária</th>
                   <th>Professor</th>
                   <th>E-mail</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
 
@@ -144,6 +152,15 @@ export function Turmas() {
                     <td>{turma.unidade_curricular.carga_horaria}h</td>
                     <td>{turma.professor.nome}</td>
                     <td>{turma.professor.email}</td>
+                    <td>
+                      <RowAction
+                        type="button"
+                        onClick={() => navigate(`/dashboard?turma=${turma.id_turma}`)}
+                      >
+                        Abrir turma
+                        <ArrowRight size={15} />
+                      </RowAction>
+                    </td>
                   </tr>
                 ))}
               </tbody>

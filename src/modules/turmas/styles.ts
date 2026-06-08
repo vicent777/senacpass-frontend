@@ -170,3 +170,16 @@ export const Status = styled.span`
   font-size: 0.8rem;
   font-weight: 700;
 `;
+
+export const RowAction = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 9px;
+  background: rgba(30, 107, 214, 0.09);
+  color: ${theme.colors.primary};
+  font-weight: 700;
+  white-space: nowrap;
+`;

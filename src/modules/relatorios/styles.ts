@@ -15,10 +15,6 @@ export const Page = styled.div`
   }
 `;
 
-export const PrintHeader = styled.div`
-  display: none;
-`;
-
 export const Header = styled.header`
   display: flex;
   align-items: flex-start;
@@ -163,7 +159,106 @@ export const SearchControl = styled(Control)`
 `;
 
 export const ReportMeta = styled.div`
-  display: none;
+  display: grid;
+  gap: 16px;
+  padding: 22px 26px;
+  border-bottom: 1px solid #dbe3ec;
+
+  > div:first-child {
+    display: grid;
+    gap: 4px;
+  }
+
+  small {
+    color: ${theme.colors.muted};
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  strong {
+    color: ${theme.colors.text};
+    font-size: 1.18rem;
+  }
+`;
+
+export const DocumentHeader = styled.header`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 26px;
+  border-bottom: 3px solid ${theme.colors.primary};
+  background: #f8fafc;
+  text-align: right;
+
+  > div:last-child {
+    display: grid;
+    gap: 4px;
+  }
+
+  > div:last-child strong {
+    color: ${theme.colors.text};
+    font-size: 0.92rem;
+    text-transform: uppercase;
+  }
+
+  small {
+    color: ${theme.colors.muted};
+    font-size: 0.76rem;
+  }
+
+  @media (max-width: 620px) {
+    align-items: flex-start;
+    flex-direction: column;
+    text-align: left;
+  }
+`;
+
+export const DocumentBrand = styled.div`
+  display: grid;
+  gap: 2px;
+  text-align: left;
+
+  span {
+    color: ${theme.colors.primary};
+    font-size: 1.45rem;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+`;
+
+export const DocumentDetails = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+
+  div {
+    display: grid;
+    gap: 5px;
+  }
+
+  span {
+    color: ${theme.colors.text};
+    font-size: 0.86rem;
+    font-weight: 700;
+  }
+
+  @media (max-width: 760px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+`;
+
+export const DocumentFooter = styled.footer`
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 26px;
+  border-top: 1px solid #dbe3ec;
+  background: #f8fafc;
+  color: ${theme.colors.muted};
+  font-size: 0.72rem;
 `;
 
 export const SummaryGrid = styled.div`
@@ -371,6 +466,39 @@ export const LogMeta = styled.span`
   font-size: 0.78rem;
 `;
 
+export const ReportDocument = styled.article`
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #dbe3ec;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.1);
+
+  ${SummaryGrid} {
+    padding: 20px 26px;
+    border-bottom: 1px solid #dbe3ec;
+  }
+
+  ${SummaryCard} {
+    border-radius: 4px;
+    background: #f8fafc;
+    box-shadow: none;
+  }
+
+  ${Section} {
+    border: 0;
+    border-radius: 0;
+    padding: 24px 26px;
+    box-shadow: none;
+  }
+
+  ${Section} + ${Section} {
+    border-top: 1px solid #dbe3ec;
+  }
+`;
+
 export const ReportPrintStyles = createGlobalStyle`
   @media print {
     body {
@@ -381,25 +509,13 @@ export const ReportPrintStyles = createGlobalStyle`
       gap: 12px;
     }
 
-    ${PrintHeader} {
-      display: grid;
-      gap: 3px;
-      padding-bottom: 12px;
-      border-bottom: 2px solid #1e6bd6;
-    }
-
-    ${PrintHeader} strong {
-      color: #1e6bd6;
-      font-size: 1.25rem;
-    }
-
     ${Header}, ${Controls}, ${Actions} {
       display: none !important;
     }
 
-    ${ReportMeta} {
-      display: grid;
-      gap: 3px;
+    ${ReportDocument} {
+      border: 0;
+      box-shadow: none;
     }
 
     ${SummaryCard}, ${Section} {
@@ -421,6 +537,10 @@ export const ReportPrintStyles = createGlobalStyle`
     }
 
     ${LogRow} {
+      break-inside: avoid;
+    }
+
+    ${DocumentHeader}, ${ReportMeta}, ${DocumentFooter} {
       break-inside: avoid;
     }
   }
