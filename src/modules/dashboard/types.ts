@@ -7,14 +7,17 @@ export interface SummaryCardData {
 export interface DashboardHeaderData {
   eyebrow: string;
   title: string;
+  subtitle: string;
   actionLabel: string;
 }
 
 export interface CourseOverviewData {
   title: string;
   subtitle: string;
-  scheduleLabel: string;
-  scheduleValue: string;
+  dateLabel: string;
+  dateValue: string;
+  timeLabel: string;
+  timeValue: string;
   roomLabel: string;
   roomValue: string;
   roomIcon: 'building';
@@ -54,12 +57,16 @@ export interface AlertsPanelData {
 
 export interface Student {
   id: number;
+  studentId?: string;
+  presenceId?: string;
   name: string;
   avatar?: string;
   registration: string;
   entry: string;
+  exit?: string;
   permanence: string;
-  status: 'Presente' | 'Parcial' | 'Ausente';
+  status: 'Presente' | 'Parcial' | 'Ausente' | 'Justificado';
+  justification?: string;
 }
 
 export interface StudentListData {

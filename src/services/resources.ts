@@ -30,6 +30,7 @@ export interface Turma {
 export interface Dispositivo {
   id_dispositivo: string;
   id_hardware: string;
+  nome?: string;
   localizacao: string;
   ip: string;
   status: string;
@@ -82,6 +83,14 @@ export interface LogAcesso {
   tipo_evento: string;
 }
 
+export interface CreateAcessoLogInput {
+  rfid_uid: string;
+  tipo_evento: 'RFID_LEITURA' | 'RFID_IGNORADO_SEM_AULA' | 'JUSTIFICATIVA_MANUAL';
+  data_hora?: string;
+  id_aula?: string;
+  justificativa?: string;
+}
+
 export interface ApiErrorResponse {
   message?: string;
   error?: string;
@@ -106,10 +115,12 @@ export const publicApi = {
 
   listPresencas: () => request<Presenca[]>('get', '/presencas'),
   getPresencaById: (id: string | number) => request<Presenca>('get', `/presencas/${id}`),
-  createPresenca: (data: unknown) => request<Presenca>('post', '/presencas', data),
+  createPresenca: (data: { id_aluno: string; id_aula: string; status: string }) =>
+    request<Presenca>('post', '/presencas', data),
 
   listAcessoLogs: () => request<LogAcesso[]>('get', '/log-acessos'),
-  createAcessoLog: (data: unknown) => request<LogAcesso>('post', '/log-acessos', data),
+  createAcessoLog: (data: CreateAcessoLogInput) =>
+    request<LogAcesso>('post', '/log-acessos', data),
 };
 
 export const protectedApi = {
@@ -174,6 +185,13 @@ export const protectedApi = {
 
   listPresencasByAula: (idAula: string | number) => 
     request<Presenca[]>('get', `/presencas/aula/${idAula}`),
+  createManualAbsence: (data: { id_aluno: string; id_aula: string }) =>
+    request<Presenca>('post', '/presencas/manual', data),
+  justifyPresenca: (id: string | number, justificativaManual: string) =>
+    request<Presenca>('post', `/presencas/${id}/justificativa`, {
+      status: 'JUSTIFICADO',
+      justificativa_manual: justificativaManual,
+    }),
 
   listPresencas: () => request<Presenca[]>('get', '/presencas'),
 };

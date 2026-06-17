@@ -35,8 +35,11 @@ export const HeaderActions = styled.div`
 `;
 
 export const Eyebrow = styled.span`
-  font-size: 0.82rem;
-  color: ${theme.colors.muted};
+  color: ${theme.colors.primary};
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 `;
 
 export const Title = styled.h1`
@@ -62,4 +65,12 @@ export const PrimaryButton = styled.button`
     width: 100%;
     justify-content: center;
   }
+`;
+
+export const Subtitle = styled.p`
+  max-width: 720px;
+  margin-top: 4px;
+  color: ${theme.colors.muted};
+  font-size: 0.94rem;
+  line-height: 1.55;
 `;

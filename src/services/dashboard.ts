@@ -18,6 +18,11 @@ import {
   type Turma,
   type UnidadeCurricular,
 } from './resources';
+import { getProfilePicture } from '../utils/profilePicture';
+import {
+  attendanceStatusRank,
+  getAttendanceStatus,
+} from '../utils/attendanceStatus';
 
 export interface AulaOption {
   id: string;
@@ -36,6 +41,7 @@ export interface DashboardLoadInput {
 export interface DashboardLoadResult {
   dashboardData: DashboardData;
   aulaOptions: AulaOption[];
+  turmaOptions: Array<{ id: string; label: string }>;
   selectedAulaId: string;
   turmaId: string;
 }
@@ -125,14 +131,6 @@ function getCalendarDateKey(value: string) {
   return `${year}-${month}-${day}`;
 }
 
-function getTodayKey() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 function getLocalTimeMinutes(value: string) {
   const date = new Date(value);
 
@@ -149,30 +147,41 @@ function getAulaSortKey(aula: Aula) {
   return `${getCalendarDateKey(aula.data_aula)}-${String(startMinutes).padStart(4, '0')}`;
 }
 
-function isAulaInProgress(aula: Aula) {
-  const aulaDate = getCalendarDateKey(aula.data_aula);
+function getAulaDateTime(aula: Aula, boundary: 'start' | 'end') {
+  const date = getCalendarDateKey(aula.data_aula);
+  const timeValue =
+    boundary === 'start'
+      ? aula.horario_inicio_previsto
+      : aula.horario_fim_previsto;
+  const minutes = getLocalTimeMinutes(timeValue);
 
-  if (!aulaDate || aulaDate !== getTodayKey()) {
-    return false;
+  if (!date || minutes === null) {
+    return null;
   }
 
-  const start = getLocalTimeMinutes(aula.horario_inicio_previsto);
-  const end = getLocalTimeMinutes(aula.horario_fim_previsto);
+  const [year, month, day] = date.split('-').map(Number);
+  const hours = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return new Date(year, month - 1, day, hours, minute).getTime();
+}
+
+function isAulaInProgress(aula: Aula) {
+  const start = getAulaDateTime(aula, 'start');
+  const end = getAulaDateTime(aula, 'end');
 
   if (start === null || end === null) {
     return aula.status?.toUpperCase() === 'EM_ANDAMENTO';
   }
 
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  return currentMinutes >= start && currentMinutes <= end;
+  const now = Date.now();
+  return now >= start && now <= end;
 }
 
 function getHistoricalAulas(aulas: Aula[]) {
-  const today = getTodayKey();
+  const now = Date.now();
   return aulas.filter((aula) => {
-    const aulaDate = getCalendarDateKey(aula.data_aula);
-    return aulaDate !== '' && aulaDate <= today;
+    const start = getAulaDateTime(aula, 'start');
+    return start !== null && start <= now;
   });
 }
 
@@ -184,24 +193,39 @@ function hasCheckIn(presenca?: Presenca) {
   return !Number.isNaN(new Date(presenca.horario_checkin).getTime());
 }
 
+function hasCheckOut(presenca?: Presenca) {
+  if (!presenca?.horario_checkout) {
+    return false;
+  }
+
+  return !Number.isNaN(new Date(presenca.horario_checkout).getTime());
+}
+
+function isEarlyCheckOut(presenca: Presenca, aula: Aula) {
+  if (!hasCheckIn(presenca) || !hasCheckOut(presenca)) {
+    return false;
+  }
+
+  const checkOut = new Date(presenca.horario_checkout as string).getTime();
+  const classEnd = getAulaDateTime(aula, 'end');
+  const statusIndicatesEarlyExit = presenca.status?.toUpperCase().includes('AUSENT');
+
+  if (classEnd !== null) {
+    const minutesBeforeEnd = Math.floor((classEnd - checkOut) / 60000);
+    return minutesBeforeEnd >= 30 || statusIndicatesEarlyExit;
+  }
+
+  return statusIndicatesEarlyExit;
+}
+
+function formatCount(count: number, singular: string, plural: string) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 function getCheckInTimestamp(presenca: Presenca) {
   return presenca.horario_checkin
     ? new Date(presenca.horario_checkin).getTime()
     : 0;
-}
-
-function presenceStatusLabel(presenca?: Presenca): 'Presente' | 'Parcial' | 'Ausente' {
-  if (!hasCheckIn(presenca)) {
-    return 'Ausente';
-  }
-
-  const normalized = presenca?.status?.toUpperCase() || '';
-
-  if (normalized.includes('PARC') || normalized.includes('ATR')) {
-    return 'Parcial';
-  }
-
-  return 'Presente';
 }
 
 function alertTone(text?: string): Alert['type'] {
@@ -215,7 +239,12 @@ function alertTone(text?: string): Alert['type'] {
     return 'danger';
   }
 
-  if (normalized.includes('atras') || normalized.includes('suspe')) {
+  if (
+    normalized.includes('atras') ||
+    normalized.includes('ausent') ||
+    normalized.includes('parcial') ||
+    normalized.includes('suspe')
+  ) {
     return 'warning';
   }
 
@@ -234,7 +263,7 @@ function getSelectedAula(aulas: Aula[], selectedAulaId?: string) {
     }
   }
 
-  const activeAula = historicalAulas.find((aula) => isAulaInProgress(aula));
+  const activeAula = aulas.find((aula) => isAulaInProgress(aula));
 
   if (activeAula) {
     return activeAula;
@@ -247,10 +276,7 @@ function getSelectedAula(aulas: Aula[], selectedAulaId?: string) {
 
 export function buildAulaOptions(aulas: Aula[]) {
   return getHistoricalAulas(aulas)
-    .map((aula) => {
-      const isActive = isAulaInProgress(aula);
-      return { ...aula, isActive };
-    })
+    .map((aula) => ({ ...aula, isActive: isAulaInProgress(aula) }))
     .sort((left, right) => {
       if (left.isActive !== right.isActive) {
         return left.isActive ? -1 : 1;
@@ -281,7 +307,7 @@ function buildAlerts(presencas: Presenca[]): AlertsPanelData {
       .slice(0, 3)
       .map((presence, index) => ({
         id: index + 1,
-        title: `${presence.aluno.nome} • ${presenceStatusLabel(presence)}`,
+        title: `${presence.aluno.nome} • ${getAttendanceStatus(presence)}`,
         description: `${presence.aluno.matricula_institucional} • Check-in ${formatTime(presence.horario_checkin)}`,
         type: alertTone(presence.status),
         time: formatTime(presence.horario_checkin),
@@ -296,7 +322,7 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
     const alunoId = presenca.aluno.id_aluno;
     const current = presencasByAluno.get(alunoId);
 
-    if (!current || (!hasCheckIn(current) && hasCheckIn(presenca))) {
+    if (!current || attendanceStatusRank(presenca) > attendanceStatusRank(current)) {
       presencasByAluno.set(alunoId, presenca);
     }
   });
@@ -306,12 +332,16 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
 
     return {
     id: index + 1,
+    studentId: inscricao.aluno.id_aluno,
+    presenceId: presenca?.id_presenca,
     name: inscricao.aluno.nome,
-    avatar: `https://i.pravatar.cc/150?u=${inscricao.aluno.id_aluno}`,
+    avatar: getProfilePicture(inscricao.aluno.id_aluno),
     registration: inscricao.aluno.matricula_institucional,
     entry: presenca ? formatTime(presenca.horario_checkin) : '--:--',
+    exit: presenca ? formatTime(presenca.horario_checkout) : '--:--',
     permanence: presenca ? formatMinutes(presenca.tempo_permanencia_minutos) : '0m',
-    status: presenceStatusLabel(presenca),
+    status: getAttendanceStatus(presenca),
+    justification: presenca?.justificativa_manual || undefined,
     };
   });
 
@@ -319,16 +349,18 @@ function buildStudentList(inscricoes: InscricaoTurma[], presencas: Presenca[]): 
     title: 'Lista de presença da aula',
     searchPlaceholder: 'Buscar aluno...',
     filterLabel: 'Todos os status',
-    filterOptions: ['Todos os status', 'Presente', 'Parcial', 'Ausente'],
+    filterOptions: ['Todos os status', 'Presente', 'Parcial', 'Ausente', 'Justificado'],
     statusLegend: [
       { label: 'Presente', color: '#10B981' },
       { label: 'Parcial', color: '#F59E0B' },
       { label: 'Ausente', color: '#EF4444' },
+      { label: 'Justificado', color: '#2563EB' },
     ],
     columns: [
       { key: 'name', label: 'Aluno' },
       { key: 'registration', label: 'Matrícula' },
       { key: 'entry', label: 'Entrada' },
+      { key: 'exit', label: 'Saída' },
       { key: 'permanence', label: 'Permanência' },
       { key: 'status', label: 'Status' },
       { key: 'action', label: 'Ação' },
@@ -353,11 +385,16 @@ function buildPresenceChart(
     .sort((left, right) => getAulaSortKey(left).localeCompare(getAulaSortKey(right)));
 
   const data = ultimasAulas.map((aula) => {
+    const aulaEmAndamento = isAulaInProgress(aula);
     const totalPresentes = new Set(
       todasPresencas
         .filter((presenca) => presenca.aula.id_aula === aula.id_aula)
         .filter((presenca) => alunoIds.has(presenca.aluno.id_aluno))
-        .filter((presenca) => hasCheckIn(presenca))
+        .filter((presenca) =>
+          aulaEmAndamento
+            ? hasCheckIn(presenca) && !isEarlyCheckOut(presenca, aula)
+            : getAttendanceStatus(presenca) === 'Presente',
+        )
         .map((presenca) => presenca.aluno.id_aluno),
     ).size;
 
@@ -369,7 +406,7 @@ function buildPresenceChart(
 
   return {
     title: 'Presença por aula',
-    legendLabel: 'Presentes, parciais e atrasados',
+    legendLabel: 'Alunos com presença',
     totalStudents: alunoIds.size,
     data,
   };
@@ -384,35 +421,85 @@ function buildCourseOverview(
 ): CourseOverviewData {
   const alunoIds = new Set(inscricoes.map((inscricao) => inscricao.aluno.id_aluno));
   const totalAlunos = alunoIds.size;
-  const totalPresentes = new Set(
-    presencas
-      .filter((presence) => alunoIds.has(presence.aluno.id_aluno))
-      .filter((presence) => hasCheckIn(presence))
-      .map((presence) => presence.aluno.id_aluno),
-  ).size;
-  const presencePercent = totalAlunos > 0 ? Math.round((totalPresentes / totalAlunos) * 100) : 0;
+  const presencasByAluno = new Map<string, Presenca[]>();
+
+  presencas
+    .filter((presence) => alunoIds.has(presence.aluno.id_aluno))
+    .forEach((presence) => {
+      const alunoId = presence.aluno.id_aluno;
+      const registros = presencasByAluno.get(alunoId) || [];
+      registros.push(presence);
+      presencasByAluno.set(alunoId, registros);
+    });
+
+  const alunosPresentes = new Set<string>();
+  const alunosComCheckInAberto = new Set<string>();
+  const alunosComSaidaAntecipada = new Set<string>();
+  const alunosParciais = new Set<string>();
+
+  presencasByAluno.forEach((registros, alunoId) => {
+    if (registros.some((presence) => getAttendanceStatus(presence) === 'Presente')) {
+      alunosPresentes.add(alunoId);
+    }
+
+    if (
+      registros.some(
+        (presence) =>
+          hasCheckIn(presence) &&
+          !hasCheckOut(presence),
+      )
+    ) {
+      alunosComCheckInAberto.add(alunoId);
+    }
+
+    if (registros.some((presence) => isEarlyCheckOut(presence, aula))) {
+      alunosComSaidaAntecipada.add(alunoId);
+    }
+
+    if (registros.some((presence) => hasCheckIn(presence))) {
+      alunosParciais.add(alunoId);
+    }
+  });
+
   const aulaEmAndamento = isAulaInProgress(aula);
+  const alunosComPresencaAtual = new Set([
+    ...alunosPresentes,
+    ...alunosComCheckInAberto,
+  ]);
+  const totalPresencaExibida = aulaEmAndamento
+    ? alunosComPresencaAtual.size
+    : alunosPresentes.size;
+  const totalSemCheckIn = [...alunoIds].filter(
+    (alunoId) => !presencasByAluno.get(alunoId)?.some((presence) => hasCheckIn(presence)),
+  ).length;
+  const presencePercent =
+    totalAlunos > 0 ? Math.round((totalPresencaExibida / totalAlunos) * 100) : 0;
   const aulaStatus = aulaEmAndamento ? 'Em andamento' : aula.status || 'Selecionada';
 
   const nomeUc = ucDetalhes?.nome || turma.unidade_curricular.nome;
-  const cargaHorariaTxt = ucDetalhes?.carga_horaria ? ` • CH: ${ucDetalhes.carga_horaria}h` : '';
+  const cargaHoraria = ucDetalhes?.carga_horaria ?? turma.unidade_curricular.carga_horaria;
 
   return {
-    title: `${nomeUc} • ${turma.codigo_turma}${cargaHorariaTxt}`,
+    title: `${nomeUc}${cargaHoraria ? ` (${cargaHoraria}h)` : ''}`,
     subtitle: `${turma.professor.nome} • ${aulaStatus}`,
-    scheduleLabel: 'Horário',
-    scheduleValue: `${formatDate(aula.data_aula)} • ${formatTime(aula.horario_inicio_previsto)} - ${formatTime(aula.horario_fim_previsto)}`,
+    dateLabel: 'Dia da aula',
+    dateValue: formatDate(aula.data_aula),
+    timeLabel: 'Horário',
+    timeValue: `${formatTime(aula.horario_inicio_previsto)} - ${formatTime(aula.horario_fim_previsto)}`,
     roomLabel: 'Sala',
     roomValue: aula.dispositivo?.localizacao || 'Não há dados no momento',
     roomIcon: 'building',
     presenceLabel: aulaEmAndamento ? 'Presença atual' : 'Presença',
-    presenceValue: totalAlunos > 0 ? `${totalPresentes} / ${totalAlunos} alunos` : 'Nenhum aluno inscrito',
+    presenceValue:
+      totalAlunos > 0
+        ? `${totalPresencaExibida} / ${totalAlunos} alunos`
+        : 'Nenhum aluno inscrito',
     progress: presencePercent,
     progressNote:
       totalAlunos > 0
         ? aulaEmAndamento
-          ? `${totalAlunos - totalPresentes} alunos ainda sem check-in`
-          : 'Aula histórica selecionada'
+          ? `${formatCount(alunosParciais.size, 'parcial', 'parciais')}: ${formatCount(alunosComCheckInAberto.size, 'com check-in em andamento', 'com check-in em andamento')} • ${formatCount(alunosComSaidaAntecipada.size, 'saiu antes do tempo mínimo', 'saíram antes do tempo mínimo')} • ${formatCount(totalSemCheckIn, 'sem check-in', 'sem check-in')}`
+          : `${formatCount(alunosParciais.size, 'aluno com check-in', 'alunos com check-in')} • ${formatCount(alunosComSaidaAntecipada.size, 'saída antecipada', 'saídas antecipadas')} • ${formatCount(totalSemCheckIn, 'sem check-in', 'sem check-in')}`
         : 'Não há dados no momento',
     optionsLabel: 'Mais opções',
   };
@@ -430,9 +517,8 @@ function buildDevicePanel(aula: Aula): DevicePanelData {
   }
 
   return {
-    title: `Dispositivo ${device.id_hardware || 'Hardware'}`,
-    // Passamos os dados limpos, sem formatação difícil de separar
-    description: `${device.id_dispositivo}|${device.status}`,
+    title: 'Dispositivo da sala',
+    description: `${device.id_hardware}|${device.status}`,
     actions: [],
   };
 }
@@ -476,13 +562,30 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
   console.log('DEBUG 1 - Aulas ativas que chegaram da API:', activeAulas);
   console.log('DEBUG 2 - Lista segura de aulas ativas:', safeActiveAulas);
 
-  const initialTurmaId = turmaId || safeActiveAulas[0]?.turma?.id_turma || safeTurmas[0]?.id_turma || '';
+  const activeAula = safeActiveAulas.find((aula) => isAulaInProgress(aula));
+  const latestStartedAula = [...safeActiveAulas]
+    .filter((aula) => {
+      const start = getAulaDateTime(aula, 'start');
+      return start !== null && start <= Date.now();
+    })
+    .sort((left, right) => getAulaSortKey(right).localeCompare(getAulaSortKey(left)))[0];
+  const turmaOptions = safeTurmas.map((item) => ({
+    id: item.id_turma,
+    label: `${item.codigo_turma} - ${item.unidade_curricular.nome}`,
+  }));
+  const initialTurmaId =
+    turmaId ||
+    activeAula?.turma?.id_turma ||
+    latestStartedAula?.turma?.id_turma ||
+    safeTurmas[0]?.id_turma ||
+    '';
   const turma = safeTurmas.find((item) => item.id_turma === initialTurmaId) ?? safeTurmas[0];
 
   if (!turma) {
     return {
       dashboardData: EMPTY_DASHBOARD_DATA,
       aulaOptions: [],
+      turmaOptions: [],
       selectedAulaId: '',
       turmaId: '',
     };
@@ -505,6 +608,7 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
     return {
       dashboardData: EMPTY_DASHBOARD_DATA,
       aulaOptions: buildAulaOptions(safeAulasDaTurma),
+      turmaOptions,
       selectedAulaId: '',
       turmaId: turma.id_turma,
     };
@@ -517,8 +621,9 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
 
   const dashboardData: DashboardData = {
     header: {
-      eyebrow: `${turma.professor.nome} • ${turma.professor.email}`,
-      title: `${turma.unidade_curricular.nome} • ${turma.codigo_turma}`,
+      eyebrow: 'Acompanhamento acadêmico',
+      title: 'Dashboard',
+      subtitle: 'Acompanhe a aula selecionada, a frequência dos alunos e os eventos recebidos pelo sistema.',
       actionLabel: 'Turmas',
     },
     courseOverview: buildCourseOverview(turma, selectedAula, safeInscricoes, selectedPresencas, ucDetalhes),
@@ -526,7 +631,12 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
     studentList: buildStudentList(safeInscricoes, selectedPresencas),
     presenceChart: buildPresenceChart(
       safeAulasDaTurma,
-      safeTodasPresencas,
+      [
+        ...safeTodasPresencas.filter(
+          (presenca) => presenca.aula.id_aula !== selectedAula.id_aula,
+        ),
+        ...selectedPresencas,
+      ],
       selectedAula,
       safeInscricoes,
     ),
@@ -554,6 +664,7 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
   return {
     dashboardData,
     aulaOptions: buildAulaOptions(safeAulasDaTurma),
+    turmaOptions,
     selectedAulaId: selectedAula.id_aula,
     turmaId: turma.id_turma,
   };
@@ -561,15 +672,18 @@ export async function loadDashboardData({ professorId, turmaId, selectedAulaId }
 
 export const EMPTY_DASHBOARD_DATA: DashboardData = {
   header: {
-    eyebrow: 'Professor logado',
-    title: 'Selecione uma aula ativa',
+    eyebrow: 'Acompanhamento acadêmico',
+    title: 'Dashboard',
+    subtitle: 'Acompanhe suas turmas, aulas, presenças e dispositivos em um só lugar.',
     actionLabel: 'Turmas',
   },
   courseOverview: {
     title: 'Não há dados no momento',
     subtitle: 'Não há dados no momento',
-    scheduleLabel: 'Horário',
-    scheduleValue: 'Não há dados no momento',
+    dateLabel: 'Dia da aula',
+    dateValue: 'Não há dados no momento',
+    timeLabel: 'Horário',
+    timeValue: 'Não há dados no momento',
     roomLabel: 'Sala',
     roomValue: 'Não há dados no momento',
     roomIcon: 'building',
@@ -597,16 +711,18 @@ export const EMPTY_DASHBOARD_DATA: DashboardData = {
     title: 'Lista da turma',
     searchPlaceholder: 'Buscar aluno...',
     filterLabel: 'Todos os status',
-    filterOptions: ['Todos os status', 'Presente', 'Parcial', 'Ausente'],
+    filterOptions: ['Todos os status', 'Presente', 'Parcial', 'Ausente', 'Justificado'],
     statusLegend: [
       { label: 'Presente', color: '#10B981' },
       { label: 'Parcial', color: '#F59E0B' },
       { label: 'Ausente', color: '#EF4444' },
+      { label: 'Justificado', color: '#2563EB' },
     ],
     columns: [
       { key: 'name', label: 'Aluno' },
       { key: 'registration', label: 'Matrícula' },
       { key: 'entry', label: 'Entrada' },
+      { key: 'exit', label: 'Saída' },
       { key: 'permanence', label: 'Permanência' },
       { key: 'status', label: 'Status' },
       { key: 'action', label: 'Ação' },

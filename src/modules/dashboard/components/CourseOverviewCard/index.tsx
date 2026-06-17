@@ -1,4 +1,4 @@
-import { DoorClosed, Laptop, MoreVertical, Clock3 } from 'lucide-react';
+import { CalendarDays, Clock3, DoorClosed, GraduationCap } from 'lucide-react';
 import type { CourseOverviewData } from '../../types';
 import { EmptyState } from '../../../../components/ui/EmptyState';
 import {
@@ -8,7 +8,6 @@ import {
   CourseIcon,
   CourseName,
   CourseMeta,
-  GhostButton,
   StatsGrid,
   StatCard,
   StatLabel,
@@ -19,6 +18,7 @@ import {
   ProgressBar,
   ProgressFill,
   ProgressNote,
+  PresenceSection,
 } from './styles';
 
 interface Props {
@@ -33,7 +33,7 @@ export function CourseOverviewCard({ data }: Props) {
       <CourseHeader>
         <CourseTitleWrap>
           <CourseIcon>
-            <Laptop size={18} />
+            <GraduationCap size={18} />
           </CourseIcon>
 
           <div>
@@ -42,9 +42,6 @@ export function CourseOverviewCard({ data }: Props) {
           </div>
         </CourseTitleWrap>
 
-        <GhostButton type="button" aria-label={data.optionsLabel}>
-          <MoreVertical size={16} />
-        </GhostButton>
       </CourseHeader>
 
       {isEmpty ? (
@@ -53,24 +50,34 @@ export function CourseOverviewCard({ data }: Props) {
           description="As informações da turma aparecem aqui quando a API retornar uma aula ativa."
         />
       ) : (
-        <StatsGrid>
-          <StatCard>
-            <StatLabel>
-              <Clock3 size={12} style={{ display: 'inline', marginRight: 6 }} />
-              {data.scheduleLabel}
-            </StatLabel>
-            <StatValue>{data.scheduleValue}</StatValue>
-          </StatCard>
+        <>
+          <StatsGrid>
+            <StatCard>
+              <StatLabel>
+                <CalendarDays size={12} style={{ display: 'inline', marginRight: 6 }} />
+                {data.dateLabel}
+              </StatLabel>
+              <StatValue>{data.dateValue}</StatValue>
+            </StatCard>
 
-          <StatCard>
-            <StatLabel>
-              <DoorClosed size={12} style={{ display: 'inline', marginRight: 6 }} />
-              {data.roomLabel}
-            </StatLabel>
-            <StatValue>{data.roomValue}</StatValue>
-          </StatCard>
+            <StatCard>
+              <StatLabel>
+                <Clock3 size={12} style={{ display: 'inline', marginRight: 6 }} />
+                {data.timeLabel}
+              </StatLabel>
+              <StatValue>{data.timeValue}</StatValue>
+            </StatCard>
 
-          <StatCard accent wide>
+            <StatCard>
+              <StatLabel>
+                <DoorClosed size={12} style={{ display: 'inline', marginRight: 6 }} />
+                {data.roomLabel}
+              </StatLabel>
+              <StatValue>{data.roomValue}</StatValue>
+            </StatCard>
+          </StatsGrid>
+
+          <PresenceSection>
             <ProgressWrap>
               <ProgressTop>
                 <div>
@@ -85,8 +92,8 @@ export function CourseOverviewCard({ data }: Props) {
               </ProgressBar>
               <ProgressNote>{data.progressNote}</ProgressNote>
             </ProgressWrap>
-          </StatCard>
-        </StatsGrid>
+          </PresenceSection>
+        </>
       )}
     </CourseCard>
   );

@@ -2,6 +2,8 @@ import styled from 'styled-components';
 import { theme } from '../../../styles/theme';
 
 export const Container = styled.header`
+  position: relative;
+  z-index: 70;
   width: 100%;
   height: 64px;
 
@@ -42,6 +44,8 @@ export const Dot = styled.div<{ online: boolean }>`
 `;
 
 export const Actions = styled.div`
+  position: relative;
+  z-index: 71;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -84,8 +88,12 @@ export const ActionButton = styled.button`
   }
 `;
 
-export const User = styled.button`
+export const User = styled.div`
   position: relative;
+  z-index: 72;
+`;
+
+export const UserButton = styled.button`
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -117,7 +125,6 @@ export const User = styled.button`
     outline: 2px solid rgba(255, 255, 255, 0.9);
     outline-offset: 2px;
   }
-
 `;
 
 export const UserAvatar = styled.img`
@@ -152,6 +159,7 @@ export const UserRole = styled.span`
 
 export const Dropdown = styled.div`
   position: absolute;
+  z-index: 1000;
   right: 0;
   top: calc(100% + 10px);
 
@@ -164,22 +172,201 @@ export const Dropdown = styled.div`
   backdrop-filter: blur(10px);
 
   min-width: 160px;
-
-  div {
-    padding: 9px 10px;
-    border-radius: 10px;
-    cursor: pointer;
-    color: #ffffff;
-    font-size: 0.95rem;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.08);
-    }
-  }
+  font-family: inherit;
 
   hr {
     margin: 6px 0;
     border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+`;
+
+export const DropdownButton = styled.button`
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-family: inherit;
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    outline: none;
+  }
+`;
+
+export const HeaderModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+`;
+
+export const HeaderModalCard = styled.section`
+  width: min(480px, 100%);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+`;
+
+export const HeaderModalHeader = styled.header`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+`;
+
+export const HeaderModalTitle = styled.h2`
+  color: ${theme.colors.text};
+  font-size: 1.08rem;
+`;
+
+export const HeaderModalClose = styled.button`
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: ${theme.colors.muted};
+`;
+
+export const HeaderModalBody = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 22px 20px;
+  color: ${theme.colors.muted};
+
+  strong {
+    display: block;
+    margin-bottom: 5px;
+    color: ${theme.colors.text};
+  }
+
+  p {
+    line-height: 1.55;
+  }
+`;
+
+export const NotificationList = styled.div`
+  display: grid;
+  width: 100%;
+  max-height: 430px;
+  overflow-y: auto;
+`;
+
+export const NotificationItem = styled.div`
+  display: flex;
+  gap: 11px;
+  padding: 12px 2px;
+
+  & + & {
+    border-top: 1px solid #edf1f5;
+  }
+`;
+
+export const NotificationIcon = styled.span<{ $tone: 'blue' | 'green' | 'orange' }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: ${({ $tone }) =>
+    $tone === 'green'
+      ? 'rgba(16, 185, 129, 0.12)'
+      : $tone === 'orange'
+        ? 'rgba(245, 158, 11, 0.14)'
+        : 'rgba(30, 107, 214, 0.1)'};
+  color: ${({ $tone }) =>
+    $tone === 'green' ? '#047857' : $tone === 'orange' ? '#b45309' : '#1d4ed8'};
+`;
+
+export const NotificationCopy = styled.div`
+  min-width: 0;
+
+  strong {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  p {
+    margin-top: 3px;
+    font-size: 0.8rem;
+  }
+`;
+
+export const NotificationTime = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  color: #94a3b8;
+  font-size: 0.72rem;
+`;
+
+export const ModalAction = styled.button`
+  margin-top: 12px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: ${theme.colors.primary};
+  color: #fff;
+  font-weight: 700;
+`;
+
+export const ProfileAvatar = styled.img`
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
+  object-fit: cover;
+  border: 3px solid rgba(30, 107, 214, 0.14);
+`;
+
+export const ProfileDetails = styled.div`
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+
+  > strong {
+    font-size: 1.05rem;
+  }
+
+  > span {
+    font-size: 0.88rem;
+  }
+
+  div {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+  }
+
+  b {
+    display: block;
+    margin-bottom: 4px;
+    color: ${theme.colors.text};
+    font-size: 0.82rem;
+  }
+
+  p {
+    font-size: 0.88rem;
   }
 `;

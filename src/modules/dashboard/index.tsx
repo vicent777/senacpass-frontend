@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CalendarPlus, LoaderCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { EMPTY_DASHBOARD_DATA, loadDashboardData, type AulaOption } from '../../services/dashboard';
+import { protectedApi, publicApi } from '../../services/resources';
 
 import { DashboardHeader } from './components/DashboardHeader';
 import { CourseOverviewCard } from './components/CourseOverviewCard';
@@ -12,7 +13,8 @@ import { AuditPanel } from './components/AuditPanel';
 import { StudentList } from './components/StudentList';
 import { DevicePanel } from './components/DevicePanel';
 import { PresenceChart } from './components/PresenceChart';
-import type { DeviceActionData } from './types';
+import { DashboardModal } from './components/DashboardModal';
+import type { DeviceActionData, Student } from './types';
 import {
   Page,
   BalancedHeroGrid,
@@ -32,19 +34,28 @@ import type { DashboardData } from './types';
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTurmaId = useRef(searchParams.get('turma') || undefined);
   const { user, loading: authLoading } = useAuth();
   const professorId = user?.id ?? '';
   const [dashboardData, setDashboardData] = useState<DashboardData>(EMPTY_DASHBOARD_DATA);
   const [aulaOptions, setAulaOptions] = useState<AulaOption[]>([]);
+  const [turmaOptions, setTurmaOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [selectedAulaId, setSelectedAulaId] = useState('');
   const [selectedTurmaId, setSelectedTurmaId] = useState('');
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [refreshingDashboard, setRefreshingDashboard] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [studentToJustify, setStudentToJustify] = useState<Student | null>(null);
+  const [justification, setJustification] = useState('');
+  const [attachmentName, setAttachmentName] = useState('');
+  const [justificationError, setJustificationError] = useState<string | null>(null);
+  const [submittingJustification, setSubmittingJustification] = useState(false);
 
   function applyDashboardResult(result: Awaited<ReturnType<typeof loadDashboardData>>) {
     setDashboardData(result.dashboardData);
     setAulaOptions(result.aulaOptions);
+    setTurmaOptions(result.turmaOptions);
     setSelectedAulaId(result.selectedAulaId);
     setSelectedTurmaId(result.turmaId);
   }
@@ -61,7 +72,10 @@ export function Dashboard() {
       setLoadError(null);
 
       try {
-        const result = await loadDashboardData({ professorId });
+        const result = await loadDashboardData({
+          professorId,
+          turmaId: initialTurmaId.current,
+        });
 
         if (!isMounted) {
           return;
@@ -93,11 +107,6 @@ export function Dashboard() {
       isMounted = false;
     };
   }, [authLoading, professorId]);
-
-  const selectedAula = useMemo(
-    () => aulaOptions.find((option) => option.id === selectedAulaId),
-    [aulaOptions, selectedAulaId],
-  );
 
   function handleDeviceAction(action: DeviceActionData) {
     if (action.icon === 'refresh' || action.icon === 'sync') {
@@ -159,10 +168,125 @@ export function Dashboard() {
       });
   }
 
+  function handleTurmaChange(nextTurmaId: string) {
+    if (!user?.id || !nextTurmaId) {
+      return;
+    }
+
+    setRefreshingDashboard(true);
+    setLoadError(null);
+    setSearchParams({ turma: nextTurmaId });
+
+    void loadDashboardData({
+      professorId: user.id,
+      turmaId: nextTurmaId,
+    })
+      .then((result) => applyDashboardResult(result))
+      .catch((error) => {
+        console.error('Erro ao trocar a turma selecionada:', error);
+        setLoadError('Não foi possível carregar a turma selecionada.');
+      })
+      .finally(() => setRefreshingDashboard(false));
+  }
+
+  function handleOpenJustification(student: Student) {
+    setStudentToJustify(student);
+    setJustification('');
+    setAttachmentName('');
+    setJustificationError(null);
+  }
+
+  function handleCloseJustification() {
+    if (submittingJustification) {
+      return;
+    }
+
+    setStudentToJustify(null);
+    setJustification('');
+    setAttachmentName('');
+    setJustificationError(null);
+  }
+
+  async function handleJustificationSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!studentToJustify || !user?.id || !selectedAulaId || justification.trim().length < 3) {
+      return;
+    }
+
+    setSubmittingJustification(true);
+    setJustificationError(null);
+
+    try {
+      let presenceId = studentToJustify.presenceId;
+
+      if (!presenceId) {
+        if (!studentToJustify.studentId) {
+          throw new Error('Aluno sem identificador para criar a presença.');
+        }
+
+        const createdPresence = await protectedApi.createManualAbsence({
+          id_aluno: studentToJustify.studentId,
+          id_aula: selectedAulaId,
+        });
+        presenceId = createdPresence.id_presenca;
+      }
+
+      await protectedApi.justifyPresenca(presenceId, justification.trim());
+
+      try {
+        if (!studentToJustify.studentId) {
+          throw new Error('Aluno sem identificador para registrar o log.');
+        }
+
+        const aluno = await protectedApi.getAlunoById(studentToJustify.studentId);
+        await publicApi.createAcessoLog({
+          rfid_uid: aluno.rfid_uid,
+          tipo_evento: 'JUSTIFICATIVA_MANUAL',
+          data_hora: new Date().toISOString(),
+          id_aula: selectedAulaId,
+          justificativa: justification.trim(),
+        });
+      } catch (logError) {
+        console.warn(
+          'A justificativa foi salva, mas a API não aceitou o log de auditoria. O backend precisa permitir JUSTIFICATIVA_MANUAL.',
+          logError,
+        );
+      }
+
+      const result = await loadDashboardData({
+        professorId: user.id,
+        turmaId: selectedTurmaId || undefined,
+        selectedAulaId: selectedAulaId || undefined,
+      });
+      applyDashboardResult(result);
+      setStudentToJustify(null);
+      setJustification('');
+      setAttachmentName('');
+    } catch (error) {
+      console.error('Erro ao justificar presença:', error);
+      setJustificationError('Não foi possível salvar a justificativa. Tente novamente.');
+    } finally {
+      setSubmittingJustification(false);
+    }
+  }
+
   const rightSlot = (
     <HeaderContext>
-      <HeaderContextLabel>Aula da turma</HeaderContextLabel>
+      <HeaderContextLabel>Turma</HeaderContextLabel>
+      <AulaSelect
+        value={selectedTurmaId}
+        onChange={(event) => handleTurmaChange(event.target.value)}
+        disabled={loadingDashboard || refreshingDashboard || turmaOptions.length === 0}
+      >
+        {turmaOptions.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label}
+          </option>
+        ))}
+      </AulaSelect>
 
+      <HeaderContextLabel>Aula exibida</HeaderContextLabel>
       <AulaSelect
         value={selectedAulaId}
         onChange={(event) => handleAulaChange(event.target.value)}
@@ -180,9 +304,11 @@ export function Dashboard() {
         ))}
       </AulaSelect>
 
-      <HeaderContextNote>
-        {loadError || (refreshingDashboard ? 'Atualizando a visão da aula...' : selectedAula?.label || 'Selecione uma aula para ver a turma vinculada.')}
-      </HeaderContextNote>
+      {loadError || refreshingDashboard ? (
+        <HeaderContextNote>
+          {loadError || 'Atualizando a visão da aula...'}
+        </HeaderContextNote>
+      ) : null}
     </HeaderContext>
   );
 
@@ -234,7 +360,7 @@ export function Dashboard() {
 
   return (
     <Page>
-      <DashboardHeader data={dashboardData.header} onStartProcess={handleTurmasNavigation} rightSlot={rightSlot} />
+      <DashboardHeader data={dashboardData.header} rightSlot={rightSlot} />
 
       <BalancedHeroGrid>
         <CourseOverviewCard data={dashboardData.courseOverview} />
@@ -243,13 +369,26 @@ export function Dashboard() {
 
       <HeroGrid>
         <AlertsPanel data={dashboardData.alertsPanel} />
-        <StudentList data={dashboardData.studentList} />
+        <StudentList data={dashboardData.studentList} onJustify={handleOpenJustification} />
       </HeroGrid>
 
       <ChartAndAudit>
         <PresenceChart data={dashboardData.presenceChart} />
         <AuditPanel data={dashboardData.auditPanel} onStartProcess={handleTurmasNavigation} />
       </ChartAndAudit>
+
+      <DashboardModal
+        open={Boolean(studentToJustify)}
+        submitting={submittingJustification}
+        studentName={studentToJustify?.name || ''}
+        justification={justification}
+        attachmentName={attachmentName}
+        error={justificationError}
+        onClose={handleCloseJustification}
+        onJustificationChange={setJustification}
+        onAttachmentChange={(file) => setAttachmentName(file?.name || '')}
+        onSubmit={handleJustificationSubmit}
+      />
     </Page>
   );
 }

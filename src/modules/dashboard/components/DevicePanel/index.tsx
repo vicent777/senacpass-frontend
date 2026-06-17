@@ -19,7 +19,7 @@ export function DevicePanel({ data }: Props) {
   }
 
   // Divisão segura
-  const [deviceId, status] = data.description.split('|');
+  const [hardwareId, status] = data.description.split('|');
 
   return (
     <Panel>
@@ -37,7 +37,7 @@ export function DevicePanel({ data }: Props) {
             ID do Hardware
           </StatLabel>
           <StatValue style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-            {deviceId || 'N/A'}
+            {hardwareId || 'N/A'}
           </StatValue>
         </StatCard>
 

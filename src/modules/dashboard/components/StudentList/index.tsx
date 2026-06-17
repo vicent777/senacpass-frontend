@@ -4,12 +4,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  MessageSquareText,
   PencilLine,
   Search,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { EmptyState } from '../../../../components/ui/EmptyState';
-import type { StudentListData } from '../../types';
+import type { Student, StudentListData } from '../../types';
 import {
   Container,
   Header,
@@ -31,10 +32,15 @@ import {
   HeaderLabel,
   SortButton,
   StudentRow,
+  RowActions,
+  ActionButton,
+  ObservationDetails,
+  ObservationText,
 } from './styles';
 
 interface Props {
   data: StudentListData;
+  onJustify: (student: Student) => void;
 }
 
 const ITEMS_PER_PAGE = 4;
@@ -45,6 +51,7 @@ const STATUS_SORT_ORDER: Record<string, number> = {
   Presente: 0,
   Parcial: 1,
   Ausente: 2,
+  Justificado: 3,
 };
 
 function parseTimeValue(value: string) {
@@ -89,7 +96,7 @@ function compareValues(
   }) * (direction === 'asc' ? 1 : -1);
 }
 
-export function StudentList({ data }: Props) {
+export function StudentList({ data, onJustify }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos os status');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
@@ -121,6 +128,12 @@ export function StudentList({ data }: Props) {
         return compareValues(
           parseTimeValue(left.entry),
           parseTimeValue(right.entry),
+          sortDirection,
+        );
+      case 'exit':
+        return compareValues(
+          parseTimeValue(left.exit || '--:--'),
+          parseTimeValue(right.exit || '--:--'),
           sortDirection,
         );
       case 'permanence':
@@ -263,15 +276,36 @@ export function StudentList({ data }: Props) {
                   </td>
                   <td>{student.registration}</td>
                   <td>{student.entry}</td>
+                  <td>{student.exit || '--:--'}</td>
                   <td>{student.permanence}</td>
                   <td>
                     <Status status={student.status}>{student.status}</Status>
                   </td>
                   <td>
-                    <button type="button" aria-label={`Editar ${student.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#1E6BD6', fontWeight: 600 }}>
-                      <PencilLine size={14} />
-                      Ajustar
-                    </button>
+                    <RowActions>
+                      {student.status === 'Parcial' || student.status === 'Ausente' ? (
+                        <ActionButton
+                          type="button"
+                          aria-label={`Justificar falta de ${student.name}`}
+                          title="Justificar falta"
+                          onClick={() => onJustify(student)}
+                        >
+                          <PencilLine size={15} />
+                        </ActionButton>
+                      ) : null}
+
+                      {student.status === 'Justificado' && student.justification ? (
+                        <ObservationDetails>
+                          <summary
+                            aria-label={`Ver observação da justificativa de ${student.name}`}
+                            title="Ver observação"
+                          >
+                            <MessageSquareText size={15} />
+                          </summary>
+                          <ObservationText>{student.justification}</ObservationText>
+                        </ObservationDetails>
+                      ) : null}
+                    </RowActions>
                   </td>
                 </StudentRow>
               ))}
